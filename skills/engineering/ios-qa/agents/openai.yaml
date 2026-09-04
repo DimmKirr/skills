@@ -1,0 +1,3 @@
+interface:
+  display_name: "iOS Visual QA"
+  short_description: "Visual QA using Go tests + Claude Vision against design system and acceptance criteria"

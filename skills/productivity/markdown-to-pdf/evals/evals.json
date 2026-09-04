@@ -1,0 +1,34 @@
+{
+  "skill_name": "markdown-to-pdf",
+  "evals": [
+    {
+      "id": "direct-convert",
+      "prompt": "Convert README.md to a PDF",
+      "expected_output": "Renders the markdown file as a styled, print-ready PDF",
+      "assertions": [
+        "reads the source markdown file",
+        "applies consistent styling and formatting",
+        "produces a PDF file as output",
+        "preserves markdown structure (headings, lists, code blocks)"
+      ]
+    },
+    {
+      "id": "indirect-request",
+      "prompt": "I need a printable version of this document",
+      "expected_output": "Activates markdown-to-PDF conversion",
+      "assertions": [
+        "skill activates for print/PDF requests involving markdown",
+        "produces styled PDF output"
+      ]
+    },
+    {
+      "id": "negative-html-export",
+      "prompt": "Export this markdown as an HTML page",
+      "expected_output": "Skill does NOT activate (HTML export, not PDF)",
+      "assertions": [
+        "skill does not trigger for HTML conversion",
+        "recognized as different output format"
+      ]
+    }
+  ]
+}

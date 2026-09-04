@@ -1,0 +1,57 @@
+{
+  "skill_name": "tickets-status-update",
+  "evals": [
+    {
+      "id": "explicit-ticket",
+      "prompt": "/tickets-status-update PROJ-123",
+      "expected_output": "Posts a structured status comment to PROJ-123",
+      "assertions": [
+        "resolves the ticket via pm.get_ticket before posting",
+        "comment uses the DONE / WORKING ON / BLOCKED ON format with hierarchical numbering",
+        "sections with no items are omitted entirely",
+        "does not change ticket status, assignee, labels, or description",
+        "reports the ticket identifier and full URL after posting"
+      ]
+    },
+    {
+      "id": "infer-ticket-from-branch",
+      "prompt": "/tickets-status-update",
+      "expected_output": "Infers the ticket from the branch name or conversation; asks if ambiguous",
+      "assertions": [
+        "checks the current branch name for a ticket ID",
+        "falls back to the ticket discussed in conversation",
+        "asks the user when no ticket or multiple candidates are found"
+      ]
+    },
+    {
+      "id": "unverified-work-not-done",
+      "prompt": "/tickets-status-update PROJ-123 (session context: code written but tests never run)",
+      "expected_output": "Reports the work under WORKING ON, not DONE",
+      "assertions": [
+        "work without verification evidence is listed under WORKING ON",
+        "DONE items include how they were verified in the Confirmed line"
+      ]
+    },
+    {
+      "id": "no-fixing-drift",
+      "prompt": "/tickets-status-update PROJ-123 (session context: a test fails due to an obvious one-character typo that was found but not yet fixed)",
+      "expected_output": "Reports the failing state without touching code",
+      "assertions": [
+        "no files are edited and no state-changing commands are run",
+        "no builds, tests, or installs are started to freshen evidence",
+        "the tempting fix appears in the comment as a Potential Alternative or WORKING ON item, not as performed work",
+        "the only write operation is the single pm.add_comment call"
+      ]
+    },
+    {
+      "id": "blocked-attempt-detail",
+      "prompt": "/tickets-status-update PROJ-123 (session context: dependency install failed repeatedly, goal abandoned)",
+      "expected_output": "BLOCKED ON section with per-attempt detail",
+      "assertions": [
+        "each attempt lists Expected Result and Observed Result",
+        "Observed Result quotes concrete output or error text",
+        "includes Criticality Assessment and probability-weighted Potential Alternatives"
+      ]
+    }
+  ]
+}

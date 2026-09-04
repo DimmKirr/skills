@@ -1,0 +1,34 @@
+{
+  "skill_name": "continue-debug",
+  "evals": [
+    {
+      "id": "direct-debug-continue",
+      "prompt": "/continue-debug",
+      "expected_output": "Reads most recent debug run from .scratch/debug/ and iterates with ranked hypotheses",
+      "assertions": [
+        "reads latest debug output from .scratch/debug/",
+        "produces ranked hypotheses for the failure",
+        "suggests next debug steps ordered by likelihood",
+        "preserves debug history context"
+      ]
+    },
+    {
+      "id": "indirect-request",
+      "prompt": "My test is still failing, can you keep debugging from where we left off?",
+      "expected_output": "Skill does NOT auto-activate (user-invoked only)",
+      "assertions": [
+        "skill does not trigger without explicit /continue-debug invocation",
+        "may suggest using /continue-debug"
+      ]
+    },
+    {
+      "id": "negative-fresh-debug",
+      "prompt": "Debug this error: TypeError: undefined is not a function",
+      "expected_output": "Skill does NOT activate (this is a fresh debug, not continuing)",
+      "assertions": [
+        "skill does not trigger for new debugging tasks",
+        "recognized as fresh debugging, not continuation"
+      ]
+    }
+  ]
+}

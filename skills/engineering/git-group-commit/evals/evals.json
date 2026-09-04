@@ -1,0 +1,54 @@
+{
+  "skill_name": "git-group-commit",
+  "evals": [
+    {
+      "id": "multi-feature-grouping",
+      "prompt": "I have changes across auth middleware and the dashboard UI, help me commit them properly",
+      "expected_output": "Two groups in .git/commits.json with conventional messages, plus the git group-commit runner; no commits created",
+      "assertions": [
+        "commits.json groups array contains one entry per feature group in commit order",
+        "each message follows conventional commit format: type(scope): description",
+        "each group's message is scoped to that group's files only, not the full diff",
+        "no git commit is executed; user is told to run git group-commit"
+      ]
+    },
+    {
+      "id": "single-change",
+      "prompt": "Generate a commit message for my staged changes",
+      "expected_output": "commits.json with exactly one entry; full message also printed inline",
+      "assertions": [
+        "commits.json groups array has exactly one entry",
+        "the standalone-build isolation check is skipped",
+        "the full commit message is printed inline in the summary",
+        "message follows conventional commit format with imperative mood header"
+      ]
+    },
+    {
+      "id": "indirect-bugfix",
+      "prompt": "I just finished fixing a bug, help me write a good commit",
+      "expected_output": "Generates a fix-type conventional commit message via the group flow",
+      "assertions": [
+        "commit type is fix",
+        "scope reflects the area of the bugfix"
+      ]
+    },
+    {
+      "id": "reinvocation-prunes-committed",
+      "prompt": "The commit task failed on group 2, I fixed the hook, regenerate",
+      "expected_output": "Committed groups are pruned from the groups array",
+      "assertions": [
+        "groups whose files are all clean in git status are removed",
+        "only uncommitted groups remain in .git/commits.json, order preserved"
+      ]
+    },
+    {
+      "id": "negative-pr-description",
+      "prompt": "Write a PR description for my branch",
+      "expected_output": "Skill should NOT activate (this is PR description, not commit message)",
+      "assertions": [
+        "skill does not trigger",
+        "defers to git-pr-message skill"
+      ]
+    }
+  ]
+}

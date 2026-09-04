@@ -1,0 +1,34 @@
+{
+  "skill_name": "data-engineer",
+  "evals": [
+    {
+      "id": "direct-data-validation",
+      "prompt": "Check the data quality of data/users.csv",
+      "expected_output": "Runs data quality checks: nulls, duplicates, types, ranges",
+      "assertions": [
+        "verifies file path exists",
+        "checks for null values",
+        "checks for duplicate rows",
+        "validates data types match expected schema"
+      ]
+    },
+    {
+      "id": "indirect-file-inspection",
+      "prompt": "Something looks wrong with the numbers in our export file",
+      "expected_output": "Activates data quality workflow, inspects numeric columns",
+      "assertions": [
+        "skill activates on data investigation intent",
+        "inspects numeric columns for outliers or anomalies"
+      ]
+    },
+    {
+      "id": "negative-ui-rendering",
+      "prompt": "The table component isn't rendering the data correctly",
+      "expected_output": "Skill should NOT activate (this is frontend rendering, not data quality)",
+      "assertions": [
+        "skill does not trigger",
+        "recognized as UI issue, not data issue"
+      ]
+    }
+  ]
+}

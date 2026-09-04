@@ -1,0 +1,35 @@
+{
+  "skill_name": "pm",
+  "evals": [
+    {
+      "id": "direct-grooming",
+      "prompt": "Groom my backlog tickets in the Engineering project",
+      "expected_output": "Runs full grooming workflow: discover, analyze, size, report",
+      "assertions": [
+        "fetches tickets for the specified project",
+        "analyzes implementation status against codebase",
+        "produces grooming summary report with ticket URLs",
+        "does not move any ticket to Done without confirmation"
+      ]
+    },
+    {
+      "id": "indirect-ticket-check",
+      "prompt": "Are any of my tickets already implemented?",
+      "expected_output": "Checks codebase for ticket implementation status",
+      "assertions": [
+        "skill activates for ticket analysis",
+        "searches codebase for implementation evidence",
+        "reports findings with confidence levels"
+      ]
+    },
+    {
+      "id": "negative-code-implementation",
+      "prompt": "Implement the authentication feature from ticket ENG-123",
+      "expected_output": "Skill should NOT activate (this is implementation, not ticket management)",
+      "assertions": [
+        "skill does not trigger",
+        "recognized as implementation task, not grooming"
+      ]
+    }
+  ]
+}

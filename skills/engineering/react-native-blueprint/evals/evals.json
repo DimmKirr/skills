@@ -1,0 +1,35 @@
+{
+  "skill_name": "react-native-blueprint",
+  "evals": [
+    {
+      "id": "direct-extract",
+      "prompt": "Extract a blueprint from this React Native Expo app",
+      "expected_output": "Produces features.md, features.json, and design-system.md from source code analysis",
+      "assertions": [
+        "runs deterministic detection first, then LLM-enriched analysis",
+        "generates features.md with feature inventory",
+        "generates features.json with structured API contracts",
+        "generates design-system.md with component and style documentation"
+      ]
+    },
+    {
+      "id": "indirect-request",
+      "prompt": "I want to re-implement this mobile app, help me understand its structure",
+      "expected_output": "Activates blueprint extraction for re-implementation planning",
+      "assertions": [
+        "skill activates for app analysis/re-implementation",
+        "extracts features, API contracts, and design system",
+        "output is useful for rebuilding the app"
+      ]
+    },
+    {
+      "id": "negative-build-app",
+      "prompt": "Build a new React Native app with authentication and a dashboard",
+      "expected_output": "Skill does NOT activate (building new app, not extracting blueprint)",
+      "assertions": [
+        "skill does not trigger for greenfield development",
+        "recognized as implementation, not extraction"
+      ]
+    }
+  ]
+}

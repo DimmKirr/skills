@@ -1,0 +1,34 @@
+{
+  "skill_name": "git-pr-message",
+  "evals": [
+    {
+      "id": "direct-pr-message",
+      "prompt": "/git-pr-message",
+      "expected_output": "Generates PR description from committed groups and saves to .scratch/PR.md",
+      "assertions": [
+        "reads commit history on the branch",
+        "produces structured PR description with summary and changes",
+        "saves output to .scratch/PR.md",
+        "includes test plan section"
+      ]
+    },
+    {
+      "id": "indirect-request",
+      "prompt": "Write a pull request description for my branch",
+      "expected_output": "Skill does NOT auto-activate (user-invoked only)",
+      "assertions": [
+        "skill does not trigger without explicit /git-pr-message invocation",
+        "may suggest using /git-pr-message"
+      ]
+    },
+    {
+      "id": "negative-commit-message",
+      "prompt": "Generate a commit message for my staged changes",
+      "expected_output": "Skill does NOT activate (commit message, not PR description)",
+      "assertions": [
+        "skill does not trigger",
+        "defers to git-group-commit skill"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,5 @@
+interface:
+  display_name: "Continue Debug"
+  short_description: "Iterate on the latest debug run output"
+policy:
+  allow_implicit_invocation: false

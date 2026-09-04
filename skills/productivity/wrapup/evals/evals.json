@@ -1,0 +1,48 @@
+{
+  "skill_name": "wrapup",
+  "evals": [
+    {
+      "id": "direct-wrapup",
+      "prompt": "/wrapup",
+      "expected_output": "Writes a safe, structured checkpoint to .scratch/CONTINUE.md and tells the user how to exit",
+      "assertions": [
+        "writes only to .scratch/CONTINUE.md",
+        "captures the goal, current state, completed work, decisions, constraints, blockers, verification, files in play, and concrete next actions",
+        "records enough git state to detect branch or working-tree drift during pickup",
+        "omits secrets, credentials, environment values, and raw logs",
+        "does not terminate the process or run kill commands",
+        "reports the saved path and tells the user to use the harness-native /exit command",
+        "mentions /pickup as the command for continuing later"
+      ]
+    },
+    {
+      "id": "existing-checkpoint",
+      "prompt": "/wrapup with an existing .scratch/CONTINUE.md",
+      "expected_output": "Refreshes the single active checkpoint without losing unresolved relevant state",
+      "assertions": [
+        "reads the existing checkpoint before replacing it",
+        "carries forward only unresolved information still supported by the current session or repository",
+        "treats current verified state as authoritative",
+        "leaves exactly one active .scratch/CONTINUE.md"
+      ]
+    },
+    {
+      "id": "indirect-close-request",
+      "prompt": "Save my work now, I want to close the session",
+      "expected_output": "Skill does not activate without explicit invocation",
+      "assertions": [
+        "does not invoke wrapup implicitly",
+        "does not write a checkpoint or terminate the session"
+      ]
+    },
+    {
+      "id": "negative-pr-wrapup",
+      "prompt": "Wrap up this pull request and prepare the review summary",
+      "expected_output": "Skill does not activate for ordinary project wrap-up work",
+      "assertions": [
+        "does not invoke wrapup implicitly",
+        "recognizes that pull-request wrap-up is not session checkpointing"
+      ]
+    }
+  ]
+}

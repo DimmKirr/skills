@@ -1,0 +1,3 @@
+interface:
+  display_name: "React Native Blueprint"
+  short_description: "Extract features, API contracts, and design system from React Native source"

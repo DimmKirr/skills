@@ -1,0 +1,22 @@
+{
+  "name": "dimmkirr",
+  "owner": {
+    "name": "Dmitry Kireev",
+    "url": "https://github.com/dimmkirr"
+  },
+  "description": "Dmitry Kireev's skills, as an installable Claude Code plugin.",
+  "plugins": [
+    {
+      "name": "dimmkirr-skills",
+      "source": "./",
+      "description": "Git workflow, debugging, autonomous TDD, and session-management skills.",
+      "category": "engineering",
+      "keywords": [
+        "git",
+        "tdd",
+        "debugging",
+        "session-management"
+      ]
+    }
+  ]
+}

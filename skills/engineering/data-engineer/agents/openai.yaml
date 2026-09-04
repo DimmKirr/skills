@@ -1,0 +1,3 @@
+interface:
+  display_name: "Data Engineer"
+  short_description: "Data-quality verification for files and pipelines"

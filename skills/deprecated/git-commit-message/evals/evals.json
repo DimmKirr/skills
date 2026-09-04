@@ -1,0 +1,34 @@
+{
+  "skill_name": "git-commit-message",
+  "evals": [
+    {
+      "id": "direct-staged-changes",
+      "prompt": "Generate a commit message for my staged changes",
+      "expected_output": "A conventional commit message saved to .scratch/COMMIT.md",
+      "assertions": [
+        "output follows conventional commit format: type(scope): description",
+        "type is one of: feat, fix, chore, refactor, docs, test, style, perf, ci, build",
+        "description is imperative mood and under 72 characters",
+        "message is saved to .scratch/COMMIT.md"
+      ]
+    },
+    {
+      "id": "indirect-request",
+      "prompt": "I just finished fixing a bug, help me write a good commit",
+      "expected_output": "Generates a fix-type conventional commit message",
+      "assertions": [
+        "commit type is fix",
+        "scope reflects the area of the bugfix"
+      ]
+    },
+    {
+      "id": "negative-no-staged",
+      "prompt": "Write a PR description for my branch",
+      "expected_output": "Skill should NOT activate (this is PR description, not commit message)",
+      "assertions": [
+        "skill does not trigger",
+        "defers to git-pr-message skill"
+      ]
+    }
+  ]
+}

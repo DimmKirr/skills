@@ -1,0 +1,5 @@
+interface:
+  display_name: "TDD Autopilot"
+  short_description: "Autonomous implementation with mode-detected verification: visual screenshots, skill evals, or native tests"
+policy:
+  allow_implicit_invocation: false

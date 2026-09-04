@@ -1,0 +1,36 @@
+{
+  "skill_name": "drawio-diagram",
+  "evals": [
+    {
+      "id": "direct-create-diagram",
+      "prompt": "Create an AWS architecture diagram showing ECS services behind an ALB",
+      "expected_output": "Produces a .drawio file with correct mxGraphModel XML, AWS icons, and proper layout",
+      "assertions": [
+        "generates valid mxGraphModel XML",
+        "uses AWS icon shapes from the style guide",
+        "elements are properly sized and aligned",
+        "connectors have correct routing"
+      ]
+    },
+    {
+      "id": "indirect-fix-layout",
+      "prompt": "The boxes in my diagram are overlapping, can you fix the spacing?",
+      "expected_output": "Reads the .drawio file, adjusts geometry to fix overlaps",
+      "assertions": [
+        "skill activates for layout/spacing tasks",
+        "reads existing .drawio XML",
+        "adjusts mxGeometry coordinates to resolve overlaps",
+        "preserves all existing elements and connections"
+      ]
+    },
+    {
+      "id": "negative-flowchart-code",
+      "prompt": "Generate a Mermaid flowchart for the user registration process",
+      "expected_output": "Skill does NOT activate (Mermaid is a different format)",
+      "assertions": [
+        "skill does not trigger for non-drawio diagram formats",
+        "recognized as Mermaid, not drawio"
+      ]
+    }
+  ]
+}

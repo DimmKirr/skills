@@ -1,0 +1,35 @@
+{
+  "skill_name": "implement-tdd-autonomously",
+  "evals": [
+    {
+      "id": "direct-backend-task",
+      "prompt": "Implement the rate limiter middleware using TDD",
+      "expected_output": "Detects Mode 3 (backend), runs red-green-refactor cycle",
+      "assertions": [
+        "creates task plan before coding",
+        "writes failing test before implementation",
+        "runs test runner after each step",
+        "stops if test fails 3 times on same issue"
+      ]
+    },
+    {
+      "id": "direct-visual-task",
+      "prompt": "Implement the settings page design",
+      "expected_output": "Detects Mode 1 (visual UI), uses screenshot verification",
+      "assertions": [
+        "detects visual UI mode",
+        "takes screenshots for verification instead of unit tests",
+        "evaluates against acceptance criteria"
+      ]
+    },
+    {
+      "id": "negative-not-implementation",
+      "prompt": "Review the existing rate limiter code",
+      "expected_output": "Skill should NOT activate (code review, not implementation)",
+      "assertions": [
+        "skill does not trigger",
+        "recognized as review, not implementation"
+      ]
+    }
+  ]
+}

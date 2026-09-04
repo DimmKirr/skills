@@ -1,0 +1,32 @@
+{
+  "skill_name": "SKILL_NAME",
+  "evals": [
+    {
+      "id": "direct-request",
+      "prompt": "A prompt that directly invokes this skill by name or exact intent",
+      "expected_output": "Description of what correct output looks like",
+      "assertions": [
+        "assertion about output format or content",
+        "assertion about side effects or behavior"
+      ]
+    },
+    {
+      "id": "indirect-request",
+      "prompt": "A prompt that expresses the same goal without naming the skill",
+      "expected_output": "Same correct behavior triggered by intent matching",
+      "assertions": [
+        "skill activates based on intent",
+        "output matches direct request quality"
+      ]
+    },
+    {
+      "id": "negative-control",
+      "prompt": "A prompt that is related but should NOT trigger this skill",
+      "expected_output": "Skill does NOT activate",
+      "assertions": [
+        "skill does not trigger",
+        "no false positive activation"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,5 @@
+interface:
+  display_name: "PR Message"
+  short_description: "PR description to .scratch/PR.md"
+policy:
+  allow_implicit_invocation: false

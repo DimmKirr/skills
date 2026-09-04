@@ -1,0 +1,3 @@
+interface:
+  display_name: "Linear Worker"
+  short_description: "Monitor Linear tickets and react to comments, blockers, and stale work"

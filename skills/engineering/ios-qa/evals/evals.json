@@ -1,0 +1,35 @@
+{
+  "skill_name": "ios-qa",
+  "evals": [
+    {
+      "id": "direct-ios-qa",
+      "prompt": "Run visual QA on the iOS app for the login screen",
+      "expected_output": "Runs Go test flows, captures simulator screenshots, evaluates against design system",
+      "assertions": [
+        "uses Go tests with WDA for screenshot capture",
+        "evaluates screenshots against docs/DESIGN.md",
+        "checks Linear user story acceptance criteria",
+        "reports per-step visual assessment"
+      ]
+    },
+    {
+      "id": "indirect-screenshot-check",
+      "prompt": "Check if the iOS simulator output matches our design specs",
+      "expected_output": "Activates iOS QA workflow with screenshot comparison",
+      "assertions": [
+        "skill activates for iOS visual verification",
+        "captures current simulator state",
+        "compares against design system documentation"
+      ]
+    },
+    {
+      "id": "negative-android-qa",
+      "prompt": "Test the Android app on an emulator",
+      "expected_output": "Skill does NOT activate (Android, not iOS)",
+      "assertions": [
+        "skill does not trigger for Android testing",
+        "recognized as different platform"
+      ]
+    }
+  ]
+}

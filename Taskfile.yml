@@ -1,0 +1,202 @@
+version: '3'
+
+includes:
+  skills:
+    taskfile: ./Taskfile.local.yml
+    optional: true
+
+tasks:
+  default:
+    desc: List available tasks
+    cmds:
+      - task --list
+    silent: true
+
+  list:
+    desc: List every skill with its bucket and description
+    cmds:
+      - |
+        find {{.ROOT_DIR}}/skills -mindepth 3 -maxdepth 3 -name SKILL.md | sort | while IFS= read -r skill_md; do
+          bucket="$(basename "$(dirname "$(dirname "$skill_md")")")"
+          name="$(basename "$(dirname "$skill_md")")"
+          desc="$(awk -F': ' '/^description:/{print substr($0, index($0,$2)); exit}' "$skill_md")"
+          printf '%-12s %-32s %s\n' "$bucket" "$name" "$desc"
+        done
+    silent: true
+
+  link:
+    desc: Symlink every skill (except deprecated) into ~/.claude/skills and ~/.agents/skills
+    silent: true
+    cmds:
+      - |
+        set -eu
+        skill_dirs="$(find {{.ROOT_DIR}}/skills -mindepth 2 -maxdepth 2 -type d ! -path "*/deprecated/*" | sort)"
+
+        # Preflight: abort if any destination already exists as a real (non-symlink) file/dir,
+        # or if two buckets contain a skill with the same basename.
+        collisions=""
+        seen=""
+        for target in "$HOME/.claude/skills" "$HOME/.agents/skills"; do
+          printf '%s\n' "$skill_dirs" | while IFS= read -r skill_dir; do
+            [ -n "$skill_dir" ] || continue
+            dest="$target/$(basename "$skill_dir")"
+            if [ -e "$dest" ] && [ ! -L "$dest" ]; then
+              echo "  $dest (real file/dir already exists)"
+            fi
+          done
+        done > /tmp/link-collisions.$$ || true
+        printf '%s\n' "$skill_dirs" | while IFS= read -r skill_dir; do
+          name="$(basename "$skill_dir")"
+          case " $seen " in *" $name "*) echo "  duplicate skill name across buckets: $name" ;; esac
+          seen="$seen $name"
+        done >> /tmp/link-collisions.$$ || true
+        if [ -s /tmp/link-collisions.$$ ]; then
+          echo "task link: refusing to link — resolve these collisions first:"
+          cat /tmp/link-collisions.$$
+          echo "(remove the real copy so the repo symlink can own the name, or rename the skill)"
+          rm -f /tmp/link-collisions.$$
+          exit 1
+        fi
+        rm -f /tmp/link-collisions.$$
+
+        for target in "$HOME/.claude/skills" "$HOME/.agents/skills"; do
+          mkdir -p "$target"
+          # Drop broken symlinks (from any repo, not just this one)
+          for link in "$target"/*; do
+            [ -L "$link" ] || continue
+            [ -e "$link" ] && continue
+            echo "removed broken symlink $link -> $(readlink "$link")"
+            rm "$link"
+          done
+          printf '%s\n' "$skill_dirs" | while IFS= read -r skill_dir; do
+            name="$(basename "$skill_dir")"
+            ln -sfn "$skill_dir" "$target/$name"
+            echo "linked $target/$name -> $skill_dir"
+          done
+        done
+
+  sync:
+    desc: Regenerate skill indexes (bucket READMEs, top-level README, plugin.json) from SKILL.md frontmatter
+    silent: true
+    cmds:
+      - |
+        python3 - <<'EOF'
+        import json, re
+        from pathlib import Path
+
+        root = Path("{{.ROOT_DIR}}")
+        buckets = ["engineering", "productivity", "misc", "in-progress", "deprecated"]
+        promoted = {"engineering", "productivity"}
+
+        def frontmatter(skill_md):
+            text = skill_md.read_text()
+            m = re.match(r"^---\n(.*?)\n---\n", text, re.S)
+            lines = (m.group(1) if m else "").splitlines()
+            fields, i = {}, 0
+            while i < len(lines):
+                mk = re.match(r"^([\w-]+):\s*(.*)$", lines[i])
+                if not mk:
+                    i += 1
+                    continue
+                key, val = mk.group(1), mk.group(2).strip()
+                if val in (">", "|", ">-", "|-", ">+", "|+"):
+                    # YAML block scalar: gather the following indented lines
+                    block, i = [], i + 1
+                    while i < len(lines) and (lines[i].strip() == "" or lines[i][:1] in (" ", "\t")):
+                        block.append(lines[i].strip())
+                        i += 1
+                    sep = "\n" if val[0] == "|" else " "
+                    fields[key] = sep.join(b for b in block if b).strip()
+                else:
+                    if len(val) >= 2 and val[0] == val[-1] and val[0] in "\"'":
+                        val = val[1:-1]
+                    fields[key] = val
+                    i += 1
+            return fields
+
+        def replace_block(path, start, end, body):
+            text = path.read_text()
+            pattern = re.compile(re.escape(start) + r".*?" + re.escape(end), re.S)
+            if not pattern.search(text):
+                raise SystemExit(f"markers {start}..{end} not found in {path}")
+            path.write_text(pattern.sub(start + "\n" + body + "\n" + end, text))
+
+        skills = {b: [] for b in buckets}
+        for b in buckets:
+            for skill_md in sorted((root / "skills" / b).glob("*/SKILL.md")):
+                fm = frontmatter(skill_md)
+                skills[b].append((skill_md.parent.name, fm.get("description", "")))
+
+        # Bucket READMEs
+        for b in buckets:
+            entries = skills[b]
+            if not entries:
+                body = "Nothing here yet."
+            elif b in promoted:
+                body = "\n".join(f"- **[{n}](./{n}/SKILL.md)** — {d}" for n, d in entries)
+            else:
+                body = "\n".join(f"- [{n}](./{n}/SKILL.md) — {d}" for n, d in entries)
+            replace_block(root / "skills" / b / "README.md", "<!-- skills:start -->", "<!-- skills:end -->", body)
+
+        # Top-level README (promoted buckets only)
+        for b in sorted(promoted):
+            body = "\n".join(f"- **[{n}](./skills/{b}/{n}/SKILL.md)** — {d}" for n, d in skills[b]) or "Nothing here yet."
+            replace_block(root / "README.md", f"<!-- skills:{b}:start -->", f"<!-- skills:{b}:end -->", body)
+
+        # plugin.json ships exactly the promoted set
+        plugin_path = root / ".claude-plugin" / "plugin.json"
+        plugin = json.loads(plugin_path.read_text())
+        plugin["skills"] = [f"./skills/{b}/{n}" for b in ["engineering", "productivity"] for n, _ in skills[b]]
+        plugin_path.write_text(json.dumps(plugin, indent=2) + "\n")
+
+        total = sum(len(v) for v in skills.values())
+        print(f"synced {total} skills across {len(buckets)} buckets; plugin ships {len(plugin['skills'])}")
+        EOF
+
+  validate:
+    desc: Validate the Claude Code plugin and marketplace manifests
+    silent: true
+    cmds:
+      - claude plugin validate {{.ROOT_DIR}} --strict
+      - task: validate-invocation
+
+  test:
+    desc: Run bats suites for skill scripts (*.test.bats)
+    silent: true
+    cmds:
+      - |
+        BATS="$(command -v bats || echo "$HOME/.local/opt/bats-core/bin/bats")"
+        [ -x "$BATS" ] || { echo "bats not found — install bats-core (nix profile install nixpkgs#bats, or git clone bats-core to ~/.local/opt/bats-core)" >&2; exit 1; }
+        find {{.ROOT_DIR}}/skills -name '*.test.bats' -not -path '*/deprecated/*' | sort | xargs -r "$BATS"
+
+  validate-invocation:
+    desc: Check that SKILL.md disable-model-invocation and openai.yaml allow_implicit_invocation flags are in sync
+    silent: true
+    cmds:
+      - |
+        errors=0
+        for skill_md in {{.ROOT_DIR}}/skills/*/*/SKILL.md; do
+          skill_dir="$(dirname "$skill_md")"
+          name="$(basename "$skill_dir")"
+          yaml="$skill_dir/agents/openai.yaml"
+          [ -f "$yaml" ] || continue
+
+          # Check SKILL.md for disable-model-invocation: true
+          skill_disabled=$(grep -c '^disable-model-invocation: true' "$skill_md" 2>/dev/null || echo 0)
+
+          # Check openai.yaml for allow_implicit_invocation: false
+          yaml_disabled=$(grep -c 'allow_implicit_invocation: false' "$yaml" 2>/dev/null || echo 0)
+
+          if [ "$skill_disabled" -gt 0 ] && [ "$yaml_disabled" -eq 0 ]; then
+            echo "MISMATCH: $name — SKILL.md has disable-model-invocation: true but openai.yaml is missing allow_implicit_invocation: false"
+            errors=$((errors + 1))
+          elif [ "$skill_disabled" -eq 0 ] && [ "$yaml_disabled" -gt 0 ]; then
+            echo "MISMATCH: $name — openai.yaml has allow_implicit_invocation: false but SKILL.md is missing disable-model-invocation: true"
+            errors=$((errors + 1))
+          fi
+        done
+        if [ $errors -gt 0 ]; then
+          echo "$errors invocation flag mismatch(es) found"
+          exit 1
+        fi
+        echo "All invocation flags in sync"

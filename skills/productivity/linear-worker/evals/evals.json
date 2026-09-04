@@ -1,0 +1,35 @@
+{
+  "skill_name": "linear-worker",
+  "evals": [
+    {
+      "id": "direct-monitor",
+      "prompt": "Monitor my Linear tickets and alert me to new comments",
+      "expected_output": "Sets up recurring loop watching assigned tickets for activity",
+      "assertions": [
+        "connects to Linear via MCP tools",
+        "monitors tickets assigned to the user",
+        "reacts to comments, status changes, and stale tickets",
+        "provides actionable summaries of activity"
+      ]
+    },
+    {
+      "id": "indirect-ticket-watch",
+      "prompt": "Keep an eye on the engineering board and flag anything that needs my attention",
+      "expected_output": "Activates Linear monitoring for the user's tickets",
+      "assertions": [
+        "skill activates for ticket monitoring requests",
+        "sets up recurring check loop",
+        "filters for actionable items"
+      ]
+    },
+    {
+      "id": "negative-create-ticket",
+      "prompt": "Create a new Linear ticket for the login bug",
+      "expected_output": "Skill does NOT activate (creating tickets, not monitoring)",
+      "assertions": [
+        "skill does not trigger for ticket creation",
+        "recognized as one-off action, not monitoring"
+      ]
+    }
+  ]
+}

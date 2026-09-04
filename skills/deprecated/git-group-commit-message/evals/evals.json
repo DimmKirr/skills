@@ -1,0 +1,34 @@
+{
+  "skill_name": "git-group-commit-message",
+  "evals": [
+    {
+      "id": "direct-group-commit",
+      "prompt": "/git-group-commit-message",
+      "expected_output": "Groups uncommitted changes by feature, stages next group, generates commit message, repeats",
+      "assertions": [
+        "analyzes uncommitted changes and groups by feature",
+        "stages one group at a time",
+        "generates conventional commit message for each group",
+        "iterates until all changes are committed"
+      ]
+    },
+    {
+      "id": "indirect-request",
+      "prompt": "I have a bunch of changes across different features, help me commit them separately",
+      "expected_output": "Skill does NOT auto-activate (user-invoked only)",
+      "assertions": [
+        "skill does not trigger without explicit invocation",
+        "may suggest using /git-group-commit-message"
+      ]
+    },
+    {
+      "id": "negative-single-commit",
+      "prompt": "Generate a commit message for all my staged changes",
+      "expected_output": "Skill does NOT activate (single commit, not grouped)",
+      "assertions": [
+        "skill does not trigger for single commit messages",
+        "defers to git-commit-message skill"
+      ]
+    }
+  ]
+}

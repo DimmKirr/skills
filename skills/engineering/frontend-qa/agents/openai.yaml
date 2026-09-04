@@ -1,0 +1,3 @@
+interface:
+  display_name: "Frontend QA"
+  short_description: "Visual + API QA for Expo/React Native web apps"

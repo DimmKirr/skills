@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>{{title}}</title>
+<style>
+/* ═══════════════════════════════════════════════════════════════
+   PRINT DOCUMENT TEMPLATE — WeasyPrint
+   System fonts: sans-serif body, serif headings, monospace code
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Reset & Variables ─────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  /* Neutrals */
+  --ink: #1a1a2e;
+  --text: #2d2d3f;
+  --muted: #6b7280;
+  --subtle: #9ca3af;
+  --rule: #e5e7eb;
+  --surface: #f9fafb;
+  --wash: #f3f4f6;
+
+  /* Semantic palette */
+  --green: #059669;
+  --green-bg: #ecfdf5;
+  --green-bd: #a7f3d0;
+  --amber: #d97706;
+  --amber-bg: #fffbeb;
+  --amber-bd: #fde68a;
+  --slate: #64748b;
+  --slate-bg: #f1f5f9;
+  --slate-bd: #cbd5e1;
+  --violet: #7c3aed;
+  --violet-bg: #f5f3ff;
+  --violet-bd: #ddd6fe;
+  --red: #dc2626;
+  --blue: #2563eb;
+}
+
+/* ── Page ──────────────────────────────────── */
+@page {
+  size: A4;
+  margin: 20mm 22mm 22mm 22mm;
+  @bottom-left {
+    font-family: -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif;
+    font-size: 7pt;
+    color: var(--subtle);
+    content: "{{title}}";
+  }
+  @bottom-right {
+    font-family: -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif;
+    font-size: 7pt;
+    color: var(--subtle);
+    content: counter(page);
+  }
+}
+/* @page :first only used when cover is present — injected by render.py */
+@page cover { margin: 0; }
+
+/* Landscape page rule: wide tables — attach to elements with .landscape class */
+@page landscape {
+  size: A4 landscape;
+  margin: 15mm 18mm 18mm 18mm;
+  @bottom-left {
+    font-family: -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif;
+    font-size: 7pt;
+    color: var(--subtle);
+    content: "{{title}}";
+  }
+  @bottom-right {
+    font-family: -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif;
+    font-size: 7pt;
+    color: var(--subtle);
+    content: counter(page);
+  }
+}
+/* Landscape pages: the h2 (and its directly-following p/table siblings until the next h2) sit on landscape pages.
+   Use selectors that stop at the next h2 boundary instead of greedy ~ which leaks across sections. */
+h2.landscape { page: landscape; break-before: page; }
+h2.landscape + p { page: landscape; }
+h2.landscape + p + p { page: landscape; }
+h2.landscape + p + table,
+h2.landscape + p + p + table,
+h2.landscape + table { page: landscape; }
+
+/* Explicit portrait reset for every non-landscape h2 (prevents landscape page bleeding into later sections) */
+h2:not(.landscape) { page: auto; }
+
+/* Keep-together helper: apply {.keep-with-next} to an h2/h3 to glue it with the following table on the same page */
+h2.keep-with-next, h3.keep-with-next { break-after: avoid; }
+h2.keep-with-next + table, h3.keep-with-next + table { break-inside: avoid-page; }
+
+/* Inline page-local footnotes (CSS GCPM float: footnote — appears at bottom of the page where the reference sits) */
+.fn {
+  float: footnote;
+  font-family: -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif;
+  font-size: 7pt;
+  font-weight: normal;
+  line-height: 1.35;
+  color: var(--text);
+  text-align: left;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.fn::footnote-call { content: counter(footnote); vertical-align: super; font-size: 70%; line-height: 0; }
+.fn::footnote-marker { content: counter(footnote) ". "; font-weight: bold; }
+@page { @footnote { border-top: 0.5px solid var(--rule); margin-top: 6pt; padding-top: 4pt; } }
+
+/* Compact text inside landscape-page tables so wide row content fits */
+h2.landscape ~ table {
+  font-size: 6pt;
+  margin-top: 4px;
+  break-before: avoid-page;
+}
+h2.landscape ~ table th {
+  font-size: 5.5pt;
+  padding: 2px 3px;
+  letter-spacing: 0.04em;
+}
+h2.landscape ~ table td {
+  padding: 2px 3px;
+  line-height: 1.2;
+}
+/* Keep paragraphs immediately before a landscape table glued to it */
+h2.landscape ~ p {
+  margin-bottom: 0;
+  break-after: avoid;
+}
+h2.landscape ~ p:last-of-type {
+  margin-bottom: 2px;
+}
+
+body {
+  font-family: -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif;
+  font-size: 9.5pt;
+  line-height: 1.6;
+  color: var(--text);
+  text-rendering: optimizeLegibility;
+}
+
+/* ── Cover ─────────────────────────────────── */
+.cover {
+  page: cover;
+  padding: 0 56px 72px 56px;
+  /* Use padding-top to push content to bottom ~70% of A4 (297mm) */
+  padding-top: 200mm;
+  break-after: page;
+  border-bottom: 3px solid var(--ink);
+}
+.cover-subtitle {
+  font-family: 'Courier New', 'DejaVu Sans Mono', monospace;
+  font-size: 7.5pt;
+  font-weight: bold;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  margin-bottom: 16px;
+}
+.cover-title {
+  font-family: Georgia, 'DejaVu Serif', 'Times New Roman', serif;
+  font-size: 36pt;
+  font-weight: bold;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  margin-bottom: 48px;
+}
+.cover-meta {
+  padding-top: 24px;
+  border-top: 1px solid var(--rule);
+}
+.cover-meta-item {
+  display: inline-block;
+  margin-right: 32px;
+}
+.cover-meta-label {
+  font-size: 6.5pt;
+  font-weight: bold;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+  opacity: 0.6;
+}
+.cover-meta-value {
+  font-size: 10pt;
+  font-weight: bold;
+}
+
+/* ── Cover: dark ───────────────────────────── */
+.cover--dark {
+  background: #0f172a;
+  color: #f8fafc;
+  border-bottom-color: #3b82f6;
+}
+.cover--dark .cover-subtitle { color: #60a5fa; }
+.cover--dark .cover-title { color: #f1f5f9; }
+.cover--dark .cover-meta { border-top-color: #334155; }
+.cover--dark .cover-meta-label { color: #94a3b8; }
+.cover--dark .cover-meta-value { color: #e2e8f0; }
+
+/* ── Cover: light ──────────────────────────── */
+.cover--light {
+  background: #ffffff;
+  color: var(--ink);
+}
+.cover--light .cover-subtitle { color: var(--blue); }
+.cover--light .cover-title { color: var(--ink); }
+.cover--light .cover-meta { border-top-color: var(--rule); }
+.cover--light .cover-meta-label { color: var(--muted); }
+.cover--light .cover-meta-value { color: var(--ink); }
+
+/* ── Typography ────────────────────────────── */
+h1 {
+  font-family: Georgia, 'DejaVu Serif', 'Times New Roman', serif;
+  font-size: 20pt;
+  font-weight: bold;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  margin: 32px 0 12px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid var(--ink);
+  line-height: 1.15;
+  break-after: avoid;
+}
+h2 {
+  font-family: Georgia, 'DejaVu Serif', 'Times New Roman', serif;
+  font-size: 16pt;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--ink);
+  margin: 18px 0 8px;
+  padding-bottom: 4px;
+  border-bottom: 1.5px solid var(--ink);
+  line-height: 1.2;
+  break-after: avoid;
+}
+h3 {
+  font-family: Georgia, 'DejaVu Serif', 'Times New Roman', serif;
+  font-size: 12.5pt;
+  font-weight: bold;
+  color: var(--ink);
+  margin: 20px 0 10px;
+  line-height: 1.25;
+  break-after: avoid;
+}
+h4 {
+  font-size: 10pt;
+  font-weight: bold;
+  color: var(--ink);
+  margin: 18px 0 6px;
+  padding-left: 10px;
+  border-left: 2px solid var(--ink);
+  break-after: avoid;
+}
+
+/* ── Body ──────────────────────────────────── */
+p { margin: 0 0 4px; orphans: 3; widows: 3; }
+ul, ol { padding-left: 18px; margin: 0 0 4px; }
+li > ul, li > ol { margin-top: 2px; margin-bottom: 2px; padding-left: 16px; }
+li { margin: 2px 0; orphans: 3; widows: 3; }
+strong { font-weight: bold; color: var(--ink); }
+
+blockquote {
+  margin: 12px 0;
+  padding: 10px 16px;
+  background: var(--surface);
+  border-left: 3px solid var(--blue);
+  color: var(--muted);
+  font-size: 8.5pt;
+  break-inside: avoid;
+}
+
+/* ── Code ──────────────────────────────────── */
+code {
+  font-family: 'Courier New', 'DejaVu Sans Mono', monospace;
+  font-size: 7.5pt;
+  background: var(--wash);
+  padding: 1px 4px;
+  border-radius: 3px;
+  border: 1px solid var(--rule);
+  color: var(--violet);
+}
+pre {
+  background: #16213a;
+  border-radius: 2px;
+  border-left: 3px solid #3b82f6;
+  padding: 11px 14px;
+  margin: 12px 0;
+  overflow: hidden;
+  break-inside: avoid;
+}
+pre code {
+  font-size: 8pt;
+  line-height: 1.55;
+  background: none;
+  border: none;
+  color: #e2e8f0;
+  padding: 0;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+/* ── Tables ────────────────────────────────── */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 8pt;
+  margin: 2px 0 5px;
+  break-inside: auto;
+  break-before: avoid;
+}
+p + table, ul + table, ol + table {
+  margin-top: 0;
+}
+p:has(+ table), p:has(+ ul + table), p:has(+ ol + table) {
+  break-after: avoid;
+  margin-bottom: 0;
+}
+thead {
+  border-bottom: 2px solid var(--ink);
+}
+th {
+  font-weight: bold;
+  font-size: 7pt;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-align: left;
+  padding: 7px 8px 5px;
+  color: var(--muted);
+  background: none;
+}
+td {
+  padding: 5px 8px;
+  border-bottom: 1px solid var(--rule);
+  vertical-align: top;
+  line-height: 1.45;
+  font-variant-numeric: tabular-nums;
+}
+tr { break-inside: avoid; }
+tr:last-child td { border-bottom: none; }
+/* Subtle zebra */
+tr:nth-child(even) td { background: rgba(0,0,0,0.015); }
+
+/* ── Status badges ─────────────────────────── */
+.b {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  font-size: 0;
+  margin-right: 3px;
+  vertical-align: middle;
+}
+.bd { background: var(--green); }
+.bp { background: var(--amber); }
+.bm { background: var(--slate-bd); }
+.bx { background: var(--violet); }
+.br { background: var(--red); }
+
+/* ── Links ─────────────────────────────────── */
+a {
+  color: var(--blue);
+  text-decoration: none;
+  border-bottom: 1px solid var(--blue);
+}
+/* Monospace treatment for actual URLs */
+a[href^="http"],
+a[href^="https"] {
+  font-family: 'Courier New', 'DejaVu Sans Mono', monospace;
+  font-size: 7.5pt;
+  word-break: break-all;
+}
+
+/* ── Horizontal rule ───────────────────────── */
+hr {
+  border: none;
+  border-top: 1px solid var(--rule);
+  margin: 20px 0;
+}
+
+/* ── Images ────────────────────────────────── */
+img {
+  max-width: 100%;
+  border-radius: 4px;
+  border: 1px solid var(--rule);
+  margin: 8px 10px 8px 0;
+  vertical-align: top;
+}
+
+/* ── Captions ─────────────────────────────── */
+figcaption,
+.caption {
+  font-size: 7.5pt;
+  color: var(--muted);
+  text-align: center;
+  margin-top: 4px;
+  font-style: italic;
+  line-height: 1.4;
+}
+
+/* ── Definition lists ─────────────────────── */
+dl { margin: 8px 0 12px; }
+dt {
+  font-size: 8.5pt;
+  font-weight: bold;
+  color: var(--ink);
+  margin-top: 8px;
+}
+dd {
+  font-size: 9pt;
+  color: var(--text);
+  margin-left: 20px;
+  margin-top: 2px;
+  line-height: 1.55;
+}
+
+/* ── Footnotes ────────────────────────────── */
+.footnotes {
+  margin-top: 24px;
+  padding-top: 12px;
+  border-top: 1px solid var(--rule);
+  font-size: 7.5pt;
+  color: var(--muted);
+  line-height: 1.5;
+}
+sup {
+  font-size: 6.5pt;
+  line-height: 0;
+  position: relative;
+  vertical-align: baseline;
+  top: -0.4em;
+  color: var(--muted);
+}
+
+/* ── Callout (editorial pull-quote) ───────── */
+.callout {
+  margin: 16px 0;
+  padding: 12px 16px;
+  border-left: 3px solid var(--ink);
+  background: var(--surface);
+  font-family: Georgia, 'DejaVu Serif', 'Times New Roman', serif;
+  font-size: 9.5pt;
+  font-style: italic;
+  color: var(--text);
+  break-inside: avoid;
+}
+
+/* ── Utility ───────────────────────────────── */
+.new-page { break-before: page; }
+.content > h1:first-child { margin-top: 0; }
+</style>
+</head>
+<body>
+
+{{cover}}
+
+<div class="content">
+{{content}}
+</div>
+
+</body>
+</html>

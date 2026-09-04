@@ -1,0 +1,66 @@
+name: Validate
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install go-task
+        uses: arduino/setup-task@v2
+        with:
+          version: 3.x
+
+      - name: Validate plugin manifests
+        run: task validate
+
+      - name: Check indexes are up to date
+        run: |
+          task sync
+          if [ -n "$(git diff --name-only)" ]; then
+            echo "::error::Skill indexes are stale. Run 'task sync' and commit the changes."
+            git diff --name-only
+            exit 1
+          fi
+
+      - name: Lint SKILL.md frontmatter
+        run: |
+          errors=0
+          for f in skills/*/*/SKILL.md; do
+            name=$(sed -n 's/^name: *//p' "$f" | head -1)
+            desc=$(sed -n 's/^description: *//p' "$f" | head -1)
+            if [ -z "$name" ]; then
+              echo "::error file=$f::Missing 'name' in frontmatter"
+              errors=$((errors + 1))
+            fi
+            if [ -z "$desc" ]; then
+              echo "::error file=$f::Missing 'description' in frontmatter"
+              errors=$((errors + 1))
+            fi
+          done
+          if [ $errors -gt 0 ]; then
+            echo "::error::$errors frontmatter issues found"
+            exit 1
+          fi
+          echo "All SKILL.md frontmatter valid"
+
+      - name: Check SKILL.md line counts
+        run: |
+          warnings=0
+          for f in skills/*/*/SKILL.md; do
+            lines=$(wc -l < "$f")
+            if [ "$lines" -gt 500 ]; then
+              echo "::warning file=$f::$lines lines (recommended max: 500)"
+              warnings=$((warnings + 1))
+            fi
+          done
+          if [ $warnings -gt 0 ]; then
+            echo "::warning::$warnings skills exceed 500 lines"
+          fi
+          echo "Line count check complete"

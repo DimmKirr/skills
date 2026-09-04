@@ -1,0 +1,5 @@
+interface:
+  display_name: "JetBrains AI Commit"
+  short_description: "Prompt template for JetBrains commit AI"
+policy:
+  allow_implicit_invocation: false

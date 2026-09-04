@@ -1,0 +1,35 @@
+{
+  "skill_name": "frontend-qa",
+  "evals": [
+    {
+      "id": "direct-qa-run",
+      "prompt": "Run visual QA on the app to verify all tabs and screens work",
+      "expected_output": "Starts dev server, navigates all tabs, takes screenshots, reports findings",
+      "assertions": [
+        "starts or connects to the local dev server",
+        "navigates each tab/screen systematically",
+        "uses Playwright MCP for screenshots",
+        "reports visual or functional issues with screenshots"
+      ]
+    },
+    {
+      "id": "indirect-api-check",
+      "prompt": "Check if the API schema matches what the frontend expects",
+      "expected_output": "Compares OpenAPI schema against frontend API calls",
+      "assertions": [
+        "skill activates for API contract verification",
+        "reads OpenAPI spec and frontend code",
+        "identifies mismatches between spec and usage"
+      ]
+    },
+    {
+      "id": "negative-backend-test",
+      "prompt": "Run the unit tests for the backend API handlers",
+      "expected_output": "Skill does NOT activate (backend testing, not frontend QA)",
+      "assertions": [
+        "skill does not trigger for backend testing",
+        "recognized as unit testing, not visual/frontend QA"
+      ]
+    }
+  ]
+}

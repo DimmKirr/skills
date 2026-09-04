@@ -1,0 +1,93 @@
+{
+  "skill_name": "kitcut-implement",
+  "protocol_notes": [
+    "Executor sessions must be FRESH — given only the skill path, the case prompt, and the artifact path. Prior exposure to the artifact's origin site/repo or to any evidence content contaminates the run (skill-creator anti-contamination).",
+    "Primary fixture is the DISTRIBUTION bundle (no evidence/): apps/kitcut/test/results/2026-08-17T07-40-18Z-kitcut-v2-example-artifact. Full-profile fixture (evidence present, verification-only): .../2026-08-17T07-50-44Z-go-helloworld-kitcut-v2-source."
+  ],
+  "evals": [
+    {
+      "id": "direct-distribution-reproduce",
+      "prompt": "Run kitcut-implement on /kirr.dev-112/apps/kitcut/test/results/2026-08-17T07-40-18Z-kitcut-v2-example-artifact into a clean target directory",
+      "expected_output": "Full reproduce from an evidence-free bundle: plan (all create), every unit generated from facts/requirements/digests, ALL images generated via genimage.py from their descriptions, record, verify L1/L2 green; L3 reported as skipped (no reference in bundle)",
+      "assertions": [
+        "runs scripts/kit.py plan before generating anything",
+        "no file outside the artifact bundle and target is read during generation",
+        "all 4 images produced by scripts/genimage.py (or the run stops with 'provider unavailable' surfaced) — zero bytes copied from anywhere",
+        "verify reports L1/L2 green and L3 items as skipped: reference unavailable",
+        "L4 items judged against requirements files, each with one line of evidence"
+      ]
+    },
+    {
+      "id": "no-evidence-read-on-full-bundle",
+      "prompt": "Run kitcut-implement on /kirr.dev-112/apps/kitcut/test/results/2026-08-17T07-50-44Z-go-helloworld-kitcut-v2-source into a clean target",
+      "expected_output": "Even though this bundle HAS evidence/, generation never opens it: code is written from requirements + symbol-map digest; evidence is touched only if verify references it",
+      "assertions": [
+        "no Read/cat/cp of any path under evidence/ occurs before the verify step",
+        "generated code differs from evidence source in hashes while passing all checks",
+        "verify exit 0"
+      ]
+    },
+    {
+      "id": "provider-unavailable-surfaces",
+      "prompt": "Run kitcut-implement on the distribution bundle in an environment with no KIT_IMAGE_PROVIDER configured",
+      "expected_output": "The run completes all non-image units, then stops at image generation and reports 'provider unavailable' to the user with what remains — no placeholders, no evidence fallback, no false completion claim",
+      "assertions": [
+        "genimage.py exit 3 is surfaced verbatim, not worked around",
+        "completion is reported as INCOMPLETE with the image units listed as remaining",
+        "no placeholder or stock image is substituted"
+      ]
+    },
+    {
+      "id": "image-review-feedback-loop",
+      "prompt": "Run kitcut-implement on the distribution bundle with a real image provider configured; one generated image violates its requirements (e.g. missing mandated subject or wrong palette)",
+      "expected_output": "LLM-in-control feedback loop (flipped tofukit svg_executor pattern): after every genimage.py call the LLM reads the produced image and judges it against the resource's requirements; a violating image triggers a regeneration with a REVIEW FEEDBACK block appended to the original prompt; max 3 attempts per image; unresolved reviews reported, never silently accepted",
+      "assertions": [
+        "every generated image is opened and reviewed against its requirements/*.md constraints before the unit is recorded",
+        "a failing review produces a regen call whose prompt contains the original prompt plus concrete named violations",
+        "no more than 3 generation attempts per image; after that the best attempt is kept and the failure is reported",
+        "provider errors (e.g. moderation_blocked) count as failed attempts and are retried",
+        "review verdicts (pass/fail + one-line reason per image) appear in the run report"
+      ]
+    },
+    {
+      "id": "debug-mode-inkscape-svg",
+      "prompt": "Run kitcut-implement on the distribution bundle with DEBUG=true in the environment",
+      "expected_output": "Debug run: genimage.py is never called; the LLM authors SVG wireframes (Inkscape MCP or hand-written SVG) from the same composed prompts, rasterizes them, and keeps all attempt artifacts under .scratch/debug/<projectName>/<dateTimeISO>-<testNameInfo>-<id>/; the same review feedback loop runs against the wireframes; completion is never claimed on debug images",
+      "assertions": [
+        "no genimage.py invocation and no paid-provider HTTP call occurs",
+        "SVG wireframe + rasterized image + per-attempt prompt/verdict artifacts exist under .scratch/debug/<projectName>/<dateTimeISO>-<testNameInfo>-<id>/",
+        "target image paths receive the rasterized wireframes so the page renders",
+        "L3 visual checks touching debug images are reported as skipped: debug image",
+        "run is reported as a debug build, not a completed reproduction"
+      ]
+    },
+    {
+      "id": "indirect-reproduce-intent",
+      "prompt": "Here is an artifact bundle describing an app: <distribution bundle path> — rebuild the working application from it",
+      "expected_output": "Skill activates on intent (bundle + rebuild) without being named; same loop and quality as the direct case",
+      "assertions": [
+        "skill activates based on intent matching",
+        "same plan/next/generate/record/verify loop",
+        "output quality matches the direct case"
+      ]
+    },
+    {
+      "id": "negative-code-analysis",
+      "prompt": "Analyze /kirr.dev-112/apps/kitcut/test/testdata/go-helloworld for bugs and code quality issues",
+      "expected_output": "Skill does NOT activate — code analysis of a source repo, not reproduction from an artifact bundle",
+      "assertions": [
+        "skill does not trigger",
+        "no kit.py invocation, no lockfile created"
+      ]
+    },
+    {
+      "id": "edit-delta-only",
+      "prompt": "The artifact at <copy of the distribution bundle with one section resource and its edges removed> was already reproduced into <target with complete .kit-lock.json>. Apply the change.",
+      "expected_output": "Incremental apply: plan reports the affected unit(s) as regenerate/delete and everything else keep; only the delta is regenerated",
+      "assertions": [
+        "plan shows keep for all unaffected units and zero generation work is done for them",
+        "verify is re-run after the delta and gates completion"
+      ]
+    }
+  ]
+}

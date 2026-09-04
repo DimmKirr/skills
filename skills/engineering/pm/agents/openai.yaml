@@ -1,0 +1,3 @@
+interface:
+  display_name: "Project Manager"
+  short_description: "Backlog grooming, ticket analysis, and implementation status tracking"

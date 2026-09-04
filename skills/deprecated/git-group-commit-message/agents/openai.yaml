@@ -1,0 +1,5 @@
+interface:
+  display_name: "Group Commits"
+  short_description: "Group changes by feature, write per-group messages and a commit Taskfile"
+policy:
+  allow_implicit_invocation: false

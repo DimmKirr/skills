@@ -1,0 +1,5 @@
+interface:
+  display_name: "WDYT"
+  short_description: "Structured opinion: facts and theories"
+policy:
+  allow_implicit_invocation: false

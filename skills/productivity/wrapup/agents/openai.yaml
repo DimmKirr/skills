@@ -1,0 +1,6 @@
+interface:
+  display_name: "Wrap Up Session"
+  short_description: "Save session state for later pickup"
+  default_prompt: "Use $wrapup to save this session for later pickup."
+policy:
+  allow_implicit_invocation: false

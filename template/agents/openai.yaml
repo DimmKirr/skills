@@ -1,0 +1,8 @@
+interface:
+  display_name: "Template Skill"
+  short_description: "Replace with a short picker description"
+# Uncomment for user-invoked skills. MUST pair with disable-model-invocation: true
+# in SKILL.md frontmatter. A mismatch means the skill is user-only on one platform
+# but model-invokable on the other. Run `task validate` to check sync.
+# policy:
+#   allow_implicit_invocation: false

@@ -1,0 +1,8 @@
+# Scratch/context dir used by the skills themselves (COMMIT.md, PR.md, debug output) and cloned example repos
+.scratch/
+
+# Local multi-repo orchestration
+Taskfile.local.yml
+
+# IDE
+.idea/

@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "kitcut-checks/1.0.0-draft/checks.schema.json",
+  "type": "object",
+  "required": ["spec"],
+  "properties": {
+    "spec": {"const": "kitcut-checks/1.0.0-draft"},
+    "L1_build": {"type": "array", "items": {"$ref": "#/$defs/check"}},
+    "L2_structural": {"type": "array", "items": {"$ref": "#/$defs/check"}},
+    "L2_structural_order": {"type": "array", "items": {"$ref": "#/$defs/check"}},
+    "L3_visual": {"type": "array", "items": {"$ref": "#/$defs/check"}},
+    "L4_acceptance": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["judge", "against"],
+        "properties": {
+          "judge": {"const": "llm"},
+          "against": {"type": "string", "pattern": "^requirements/"}
+        }
+      }
+    }
+  },
+  "$defs": {
+    "check": {
+      "type": "object",
+      "properties": {
+        "check": {"enum": ["binary_stdout", "symbol_exists", "test_asserts_literal", "no_external_deps", "color_tokens_present", "font_families_loaded", "dom_refs_resolve", "cta_scroll_target", "external_hosts_subset", "form_no_real_submit", "section_order", "files_exist", "html_parses", "screenshot_similarity"]},
+        "run": {"type": "string"},
+        "expect": {},
+        "expect_stdout": {"type": "string"},
+        "reason": {"type": "string"},
+        "judge": {"const": "llm"}
+      },
+      "anyOf": [{"required": ["check"]}, {"required": ["run"]}]
+    }
+  }
+}

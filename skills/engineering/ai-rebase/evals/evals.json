@@ -1,0 +1,34 @@
+{
+  "skill_name": "ai-rebase",
+  "evals": [
+    {
+      "id": "direct-rebase",
+      "prompt": "/ai-rebase main..HEAD",
+      "expected_output": "Generates improved commit messages for the specified range using parallel subagents",
+      "assertions": [
+        "parses git range argument correctly",
+        "spawns parallel subagents for each commit",
+        "produces improved commit messages without creating commits",
+        "preserves commit boundaries and authorship"
+      ]
+    },
+    {
+      "id": "indirect-request",
+      "prompt": "Clean up the commit messages on this branch before I push",
+      "expected_output": "Skill does NOT auto-activate (user-invoked only)",
+      "assertions": [
+        "skill does not trigger without explicit /ai-rebase invocation",
+        "may suggest using /ai-rebase"
+      ]
+    },
+    {
+      "id": "negative-actual-rebase",
+      "prompt": "Rebase my branch onto main",
+      "expected_output": "Skill does NOT activate (this is a git rebase, not AI message rewriting)",
+      "assertions": [
+        "skill does not trigger",
+        "recognized as git rebase operation, not message improvement"
+      ]
+    }
+  ]
+}

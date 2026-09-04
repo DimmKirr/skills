@@ -1,0 +1,35 @@
+{
+  "skill_name": "decomposition-reconstruction",
+  "evals": [
+    {
+      "id": "direct-decompose",
+      "prompt": "Decompose our monolithic auth service to understand bottlenecks",
+      "expected_output": "Breaks system into components, identifies dependencies, maps critical paths",
+      "assertions": [
+        "decomposes system into discrete components",
+        "identifies bottlenecks and critical failure points",
+        "maps dependencies and ripple effects",
+        "provides reconstruction recommendations"
+      ]
+    },
+    {
+      "id": "indirect-complexity",
+      "prompt": "This system is too complex, where do we even start simplifying?",
+      "expected_output": "Activates decomposition workflow to identify simplification opportunities",
+      "assertions": [
+        "skill activates for complexity reduction requests",
+        "breaks overwhelming problem into manageable parts",
+        "identifies which components interact most"
+      ]
+    },
+    {
+      "id": "negative-implementation",
+      "prompt": "Refactor the UserService class to use dependency injection",
+      "expected_output": "Skill does NOT activate (direct refactoring, not system decomposition)",
+      "assertions": [
+        "skill does not trigger for targeted refactoring",
+        "recognized as implementation task, not analysis"
+      ]
+    }
+  ]
+}

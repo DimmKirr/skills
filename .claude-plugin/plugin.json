@@ -1,0 +1,42 @@
+{
+  "name": "dimmkirr-skills",
+  "version": "0.1.0",
+  "description": "Dmitry Kireev's agent skills \u2014 git workflow (commit grouping, rebase, PR messages), debugging, autonomous TDD, and session management.",
+  "author": {
+    "name": "Dmitry Kireev",
+    "url": "https://github.com/dimmkirr"
+  },
+  "repository": "https://github.com/dimmkirr/skills",
+  "license": "MIT",
+  "keywords": [
+    "git",
+    "commit-messages",
+    "tdd",
+    "debugging",
+    "session-management",
+    "skills"
+  ],
+  "skills": [
+    "./skills/engineering/ai-rebase",
+    "./skills/engineering/continue-debug",
+    "./skills/engineering/data-engineer",
+    "./skills/engineering/devops-engineer",
+    "./skills/engineering/drawio-diagram",
+    "./skills/engineering/frontend-qa",
+    "./skills/engineering/git-group-commit",
+    "./skills/engineering/git-pr-message",
+    "./skills/engineering/implement-tdd-autonomously",
+    "./skills/engineering/ios-qa",
+    "./skills/engineering/kitcut-implement",
+    "./skills/engineering/pm",
+    "./skills/engineering/react-native-blueprint",
+    "./skills/engineering/reverse-wireframe-ui",
+    "./skills/engineering/tickets-status-update",
+    "./skills/engineering/vector-designer",
+    "./skills/productivity/decomposition-reconstruction",
+    "./skills/productivity/linear-worker",
+    "./skills/productivity/markdown-to-pdf",
+    "./skills/productivity/pickup",
+    "./skills/productivity/wrapup"
+  ]
+}

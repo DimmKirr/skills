@@ -1,0 +1,5 @@
+interface:
+  display_name: "AI Rebase"
+  short_description: "Improved commit messages for a git range"
+policy:
+  allow_implicit_invocation: false

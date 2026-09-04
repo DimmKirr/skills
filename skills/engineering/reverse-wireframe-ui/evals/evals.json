@@ -1,0 +1,35 @@
+{
+  "skill_name": "reverse-wireframe-ui",
+  "evals": [
+    {
+      "id": "direct-wireframe",
+      "prompt": "Create drawio wireframes from these app screenshots",
+      "expected_output": "Produces .drawio wireframe diagrams from UI screenshots with component hierarchy",
+      "assertions": [
+        "reads and analyzes provided screenshots",
+        "generates .drawio wireframe with component boundaries",
+        "documents component hierarchy and visual specs",
+        "output is suitable for design handoff"
+      ]
+    },
+    {
+      "id": "indirect-ui-analysis",
+      "prompt": "I need to document the UI structure of this existing app for our redesign",
+      "expected_output": "Activates reverse wireframing for UI documentation",
+      "assertions": [
+        "skill activates for UI reverse-engineering",
+        "produces structured wireframes from screenshots",
+        "includes component hierarchy documentation"
+      ]
+    },
+    {
+      "id": "negative-new-wireframe",
+      "prompt": "Design a wireframe for a new dashboard with charts and a sidebar",
+      "expected_output": "Skill does NOT activate (forward design, not reverse engineering)",
+      "assertions": [
+        "skill does not trigger for new wireframe design",
+        "recognized as forward design, not reverse engineering from screenshots"
+      ]
+    }
+  ]
+}

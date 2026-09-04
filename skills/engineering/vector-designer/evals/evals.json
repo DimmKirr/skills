@@ -1,0 +1,36 @@
+{
+  "skill_name": "vector-designer",
+  "evals": [
+    {
+      "id": "direct-logo-design",
+      "prompt": "Design a logo for my CLI tool called 'flux'",
+      "expected_output": "Runs full design loop: requirements, Inkscape MCP, iterate 3-5 times, then present",
+      "assertions": [
+        "verifies Inkscape MCP availability before starting",
+        "gathers requirements and resolves open decisions",
+        "uses Inkscape MCP tools exclusively (no Bash inkscape CLI)",
+        "self-assesses 3-5 iterations before presenting to user",
+        "exports both SVG and PNG"
+      ]
+    },
+    {
+      "id": "indirect-favicon",
+      "prompt": "I need a favicon for my website that matches our brand",
+      "expected_output": "Activates vector design workflow for favicon creation",
+      "assertions": [
+        "skill activates for favicon/icon design",
+        "asks about existing brand assets",
+        "designs at multiple sizes (16px, 32px, 64px)"
+      ]
+    },
+    {
+      "id": "negative-raster-edit",
+      "prompt": "Edit this photo to remove the background and adjust brightness",
+      "expected_output": "Skill does NOT activate (raster image editing, not vector design)",
+      "assertions": [
+        "skill does not trigger for photo/raster editing",
+        "recognized as raster manipulation, not SVG/vector work"
+      ]
+    }
+  ]
+}

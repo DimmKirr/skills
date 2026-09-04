@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "kitcut-artifact/2.0.0-draft/facts.schema.json",
+  "type": "object",
+  "required": ["spec", "root", "resources", "edges"],
+  "properties": {
+    "spec": {"const": "kitcut-artifact/2.0.0-draft"},
+    "root": {"type": "string", "pattern": "^tofukit_project\\.[a-z0-9_]+$"},
+    "resources": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "type", "name", "category", "provenance"],
+        "properties": {
+          "id": {"type": "string", "pattern": "^[a-z_]+\\.[a-z0-9_]+$"},
+          "type": {"enum": ["tofukit_project", "tofukit_feature", "tofukit_file", "tofukit_library", "tofukit_language", "tofukit_integration"]},
+          "name": {"type": "string", "pattern": "^[a-z0-9_]+$"},
+          "category": {"type": "string"},
+          "provenance": {"enum": ["detected", "inferred", "prose-extracted"]},
+          "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+          "requirements": {"type": "string", "pattern": "^requirements/[a-z0-9_.-]+\\.md$"},
+          "attributes": {
+            "type": "object",
+            "properties": {
+              "path": {"type": "string"},
+              "dom_ref": {"type": "string"},
+              "dom_ref_source": {"enum": ["static", "rendered"]},
+              "dom_position": {"type": "integer", "minimum": 1},
+              "hex": {"type": "string", "pattern": "^#[0-9a-fA-F]{6}$"},
+              "css_variable": {"type": "string"},
+              "version": {"type": "string"}
+            }
+          }
+        }
+      }
+    },
+    "edges": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["src", "role", "dst", "provenance"],
+        "properties": {
+          "src": {"type": "string"},
+          "dst": {"type": "string"},
+          "role": {"enum": ["contains", "implemented_by", "verified_by", "tests", "uses_library", "uses_integration", "uses_image", "styled_by", "styled_by_file", "uses_font", "uses_design_system", "animated_by", "triggers", "navigates_to", "written_in", "reads_config"]},
+          "provenance": {"enum": ["detected", "inferred", "prose-extracted"]},
+          "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+          "attributes": {
+            "type": "object",
+            "properties": {"order": {"type": "integer", "minimum": 1}}
+          }
+        }
+      }
+    }
+  }
+}

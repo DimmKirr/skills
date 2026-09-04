@@ -1,0 +1,3 @@
+interface:
+  display_name: "Terminal Image Viewer"
+  short_description: "Show an image inline in the user's terminal from inside a container"

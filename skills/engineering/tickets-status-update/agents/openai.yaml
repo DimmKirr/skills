@@ -1,0 +1,5 @@
+interface:
+  display_name: "Ticket Status Update"
+  short_description: "Post a DONE / WORKING ON / BLOCKED ON status comment to a ticket"
+policy:
+  allow_implicit_invocation: false

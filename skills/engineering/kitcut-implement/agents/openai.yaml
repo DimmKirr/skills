@@ -1,0 +1,3 @@
+interface:
+  display_name: "Kitcut Implement"
+  short_description: "Reproduce a working app from a kitcut-artifact/2.0 bundle (facts + evidence + checks)"
