@@ -47,7 +47,12 @@ def extract_title(md_text: str, fallback: str) -> str:
     return fallback
 
 
+def preprocess_strikethrough(md_text: str) -> str:
+    return re.sub(r'~~(.+?)~~', r'<del>\1</del>', md_text, flags=re.DOTALL)
+
+
 def md_to_html(md_text: str) -> str:
+    md_text = preprocess_strikethrough(md_text)
     return markdown.markdown(
         md_text,
         extensions=["tables", "fenced_code", "toc", "attr_list", "footnotes"],

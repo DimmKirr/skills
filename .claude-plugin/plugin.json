@@ -35,8 +35,8 @@
     "./skills/engineering/vector-designer",
     "./skills/productivity/decomposition-reconstruction",
     "./skills/productivity/linear-worker",
+    "./skills/productivity/load",
     "./skills/productivity/markdown-to-pdf",
-    "./skills/productivity/pickup",
-    "./skills/productivity/wrapup"
+    "./skills/productivity/save"
   ]
 }

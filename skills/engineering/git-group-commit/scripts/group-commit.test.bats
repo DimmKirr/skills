@@ -79,17 +79,45 @@ two_dirty_groups() {
   [ "$(jq '.groups | length' "$GD/commits.json")" -eq 0 ]
 }
 
-@test "group file missing from disk entirely: dropped, not fatal" {
+@test "unknown path (typo, never existed): group blocked, kept, exit 3" {
   echo b > b.txt
   plan '{"groups":[
     {"name":"ghost","files":["never-existed.txt"],"message":"Ghost"},
     {"name":"B","files":["b.txt"],"message":"Add b"}
   ],"excluded":[]}'
   run_gc
+  [ "$status" -eq 3 ]
+  [[ "$output" == *"unknown path(s)"*"never-existed.txt"* ]]
+  [[ "$output" == *"1 blocked by unknown paths"* ]]
+  [ "$(git log -1 --format=%s)" = "Add b" ]                    # B still commits
+  [ "$(jq -r '.groups[0].name' "$GD/commits.json")" = "ghost" ]
+}
+
+@test "typo alongside a real file: whole group blocked, nothing half-committed" {
+  echo a > a.txt
+  plan '{"groups":[{"name":"A","files":["a.txt","a-typo.txt"],"message":"Add a"}],"excluded":[]}'
+  run_gc
+  [ "$status" -eq 3 ]
+  [ "$(git rev-list --count HEAD)" -eq 1 ]
+}
+
+@test "deletion already committed: dropped as done, not unknown" {
+  echo d > d.txt && git add d.txt && git commit -qm "add d"
+  git rm -q d.txt && git commit -qm "remove d"
+  plan '{"groups":[{"name":"D","files":["d.txt"],"message":"Remove d"}],"excluded":[]}'
+  run_gc
   [ "$status" -eq 0 ]
-  [[ "$output" == *"dropping from plan"* ]]
-  [ "$(git log -1 --format=%s)" = "Add b" ]
-  [ "$(jq '.groups | length' "$GD/commits.json")" -eq 0 ]
+  [[ "$output" == *"already committed, dropping from plan"* ]]
+}
+
+@test "uncommitted deletion commits" {
+  echo d > d.txt && git add d.txt && git commit -qm "add d"
+  rm d.txt
+  plan '{"groups":[{"name":"D","files":["d.txt"],"message":"Remove d"}],"excluded":[]}'
+  run_gc
+  [ "$status" -eq 0 ]
+  [ "$(git log -1 --format=%s)" = "Remove d" ]
+  ! git ls-files --error-unmatch d.txt
 }
 
 @test "untracked (new) files commit correctly" {
@@ -286,4 +314,90 @@ EOF
   [[ "$output" != *$'\033'* ]]
   NO_COLOR=1 run_gc --dry-run
   [[ "$output" != *$'\033'* ]]
+}
+
+# --- committed-elsewhere vs stale -------------------------------------------
+
+@test "group committed outside the runner: dropped as done, not reported stale" {
+  echo a > a.txt
+  HA=$(sh "$SCRIPT" --hash a.txt)
+  plan "{\"groups\":[{\"name\":\"A\",\"files\":[\"a.txt\"],\"diffHash\":\"$HA\",\"message\":\"Add a\"}],\"excluded\":[]}"
+  git add a.txt && git commit -qm "manual commit"
+  run_gc
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"already committed, dropping from plan"* ]]
+  [[ "$output" != *"stale"* ]]
+  [ "$(jq '.groups | length' "$GD/commits.json")" -eq 0 ]
+}
+
+@test "runner works from a subdirectory with repo-relative paths" {
+  mkdir -p sub && echo s > sub/s.txt
+  HS=$(sh "$SCRIPT" --hash sub/s.txt)
+  plan "{\"groups\":[{\"name\":\"S\",\"files\":[\"sub/s.txt\"],\"diffHash\":\"$HS\",\"message\":\"Add s\"}],\"excluded\":[]}"
+  cd sub
+  run sh "$SCRIPT"
+  [ "$status" -eq 0 ]
+  [ "$(git log -1 --format=%s)" = "Add s" ]
+}
+
+# --- partial staging --------------------------------------------------------
+
+@test "partially staged planned file: refuses, commits nothing, exit 2" {
+  printf '1\n2\n' > a.txt && git add a.txt && git commit -qm "a"
+  printf '1x\n2\n' > a.txt && git add a.txt
+  printf '1x\n2x\n' > a.txt                                   # staged + unstaged hunks
+  plan '{"groups":[{"name":"A","files":["a.txt"],"message":"Change a"}],"excluded":[]}'
+  run_gc
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"partially staged"*"a.txt"* ]]
+  [ "$(git rev-list --count HEAD)" -eq 2 ]
+  [ -n "$(git diff --cached --name-only)" ]                   # user's staging untouched
+  run_gc --dry-run
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"warning: partially staged"* ]]
+  run_gc --force
+  [ "$status" -eq 0 ]
+  [ "$(git log -1 --format=%s)" = "Change a" ]
+}
+
+# --- install ----------------------------------------------------------------
+
+@test "--install sets a literal alias that works from subdirectories" {
+  run sh "$SCRIPT" --install
+  [ "$status" -eq 0 ]
+  [ "$(git config --get alias.group-commit)" = '!sh "$(git rev-parse --git-dir)/group-commit.sh"' ]
+  [ -x "$GD/group-commit.sh" ]
+  echo a > a.txt
+  plan '{"groups":[{"name":"A","files":["a.txt"],"message":"Add a"}],"excluded":[]}'
+  mkdir -p deep/er && cd deep/er
+  run git group-commit --no-color
+  [ "$status" -eq 0 ]
+  [ "$(git log -1 --format=%s)" = "Add a" ]
+}
+
+@test "--install with plan: stamps diffHash, echoes canonical plan" {
+  echo a > a.txt
+  echo b > b.txt
+  P="$BATS_TEST_TMPDIR/plan.json"
+  printf '%s' '{"groups":[
+    {"name":"A","description":"d","files":["a.txt"],"message":"Add a"},
+    {"name":"B","files":["b.txt"],"message":"Add b"}]}' > "$P"
+  run sh "$SCRIPT" --install "$P"
+  [ "$status" -eq 0 ]
+  [ "$(jq -r '.groups[0].diffHash' "$GD/commits.json")" = "$(sh "$SCRIPT" --hash a.txt)" ]
+  [ "$(jq -r '.groups[0].description' "$GD/commits.json")" = "d" ]   # extra fields kept
+  [ "$(jq -c '.excluded' "$GD/commits.json")" = "[]" ]
+  [ "$(printf '%s\n' "$output" | tail -n1 | jq -r '.groups[1].message')" = "Add b" ]
+}
+
+@test "--install rejects bad schema, unknown paths, and duplicated paths" {
+  echo a > a.txt
+  P="$BATS_TEST_TMPDIR/plan.json"
+  printf '%s' '{"groups":[{"name":"A","files":[],"message":"x"}]}' > "$P"
+  run sh "$SCRIPT" --install "$P";  [ "$status" -eq 2 ]; [[ "$output" == *"schema"* ]]
+  printf '%s' '{"groups":[{"name":"A","files":["nope.txt"],"message":"x"}]}' > "$P"
+  run sh "$SCRIPT" --install "$P";  [ "$status" -eq 2 ]; [[ "$output" == *"nope.txt"* ]]
+  printf '%s' '{"groups":[{"name":"A","files":["a.txt"],"message":"x"},{"name":"B","files":["a.txt"],"message":"y"}]}' > "$P"
+  run sh "$SCRIPT" --install "$P";  [ "$status" -eq 2 ]; [[ "$output" == *"more than one group"* ]]
+  [ ! -f "$GD/commits.json" ]
 }

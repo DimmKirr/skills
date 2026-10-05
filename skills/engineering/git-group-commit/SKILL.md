@@ -27,7 +27,15 @@ git group-commit
 
 ## Execution modes
 
-**Workflow mode (preferred, Claude Code):** if the Workflow tool is available, do not execute steps 3–9 inline. Instead invoke, using this skill's base directory (announced when the skill loaded) as the script path:
+**Fast path (single group — check this FIRST, any platform):** the auto-injected context above already contains the full diff. If everything uncommitted is clearly ONE logical change (every file serves the same goal — one group is the only sensible plan), do NOT invoke Workflow and do NOT delegate message generation: both would re-read a diff you have already paid for, and the plan/verify/assemble agents exist to arbitrate *between* groups. Instead execute inline:
+
+- Steps 1–3 as written; steps 4–5 collapse (the single group is all uncommitted files minus exclusions; the standalone-build check is skipped for one group anyway)
+- Step 6 as written; step 7 yourself — write the message directly from the diff already in context, following [references/format.md](references/format.md)
+- Steps 8–9 as direct shell commands: write the plan to a temp file with a quoted heredoc, then `sh <skill dir>/scripts/group-commit.sh --install <plan>` (validates, stamps `diffHash`, installs runner + alias — mechanical, no agent), then step 10
+
+If you are not sure it's one group, it isn't — use a mode below.
+
+**Workflow mode (preferred for 2+ groups, Claude Code):** if the Workflow tool is available, do not execute steps 3–9 inline. Instead invoke, using this skill's base directory (announced when the skill loaded) as the script path:
 
 ```
 Workflow({ scriptPath: "<skill base dir>/scripts/workflow.js",
@@ -38,7 +46,7 @@ Always pass `args.stateKey` (one cheap shell command) — it keys the plan agent
 
 The script owns model selection — planning and per-group message generation run on Sonnet (messages fan out in parallel, one agent per group), artifact assembly runs on Haiku — so the session model never burns tokens on this. When it completes, relay its returned summary (groups, headers, exclusions, next command) per step 10.
 
-**Inline mode (fallback, Codex or Workflow unavailable):** execute all steps below yourself, with one substitution — in step 7, do NOT write messages with the session model. For each group run:
+**Inline mode (fallback, Codex or Workflow unavailable, 2+ groups):** execute all steps below yourself, with one substitution — in step 7, do NOT write messages with the session model. (Exception: if planning lands on a single group after all, fall back to the fast path above — one delegated read of the full diff costs more than writing one message.) For each group run:
 
 ```bash
 sh <skill dir>/scripts/codex-msg.sh <skill dir> <tmpfile> <group files...>
@@ -76,10 +84,16 @@ and read the message from `<tmpfile>`. The script delegates to `codex exec` with
    across commits instead. A feature spanning two commits is fine; one commit swallowing the
    whole branch is not. Note in the group's `notes` field which part was deferred and why.
 
-5. **Verify each group compiles standalone** (skip when there is only one group — nothing is being split): Run `git reset HEAD -- .` to clear staging, then for each group in order:
+5. **Verify each group compiles standalone** (skip when there is only one group — nothing is being split). **Never touch the real index** — the user's staging (including `git add -p` splits) must survive planning. Work in a throwaway index, inside ONE shell invocation (env does not persist between tool calls):
 
-   - `git add` the group's files **cumulatively** (no reset between groups) — the index now
-     matches exactly what that group's commit will contain on top of the previous ones.
+   ```bash
+   export GIT_INDEX_FILE=$(mktemp -u); git read-tree HEAD
+   ```
+
+   Then for each group in order:
+
+   - `git add` the group's files **cumulatively** (no reset between groups) — the throwaway
+     index now matches exactly what that group's commit will contain on top of the previous ones.
    - Extract the index and build it in isolation — the working tree hides missing
      dependencies, because uncommitted files from later groups are still on disk:
 
@@ -94,7 +108,7 @@ and read the message from `<tmpfile>`. The script delegates to `codex exec` with
      any failure against the same build of plain `HEAD` before treating it as caused by this
      group — some failures are pre-existing.
 
-   After the last group, run `git reset HEAD -- .` so the working tree starts clean.
+   After the last group, `rm -f "$GIT_INDEX_FILE"`. The real index was never modified.
 
 6. **Extract ticket IDs and fetch tickets once** (reused for every group's message):
    - From the branch name (e.g. `username/ABC-166-...` → `ABC-166`), existing commits on this branch, and `[ABC-xxx]` patterns in the diff
@@ -106,7 +120,7 @@ and read the message from `<tmpfile>`. The script delegates to `codex exec` with
    - Follow [references/format.md](references/format.md) exactly — it owns the message format, conventional commit rules, the initial-commit special case, and the user-impact quality check.
    - Only tag a group's header with ticket IDs whose work that group actually contains.
 
-8. **Write `$GIT_DIR/commits.json`** — the single source of truth for the whole plan:
+8. **Write the plan** — the single source of truth, installed as `$GIT_DIR/commits.json` in step 9. Write it to a temp file with a **quoted** heredoc (`<<'EOF'`, so nothing in messages is shell-expanded):
 
    ```json
    {
@@ -126,28 +140,39 @@ and read the message from `<tmpfile>`. The script delegates to `codex exec` with
    ```
 
    - Groups have no `id` field — array order IS commit order, and display numbering (1-based) derives from position, so reordering or deleting entries can never leave stale ids
-   - `groups[].files`: repo-relative paths (no `:/` prefix — the runner adds it)
+   - `groups[].files`: repo-relative paths, each in exactly one group (a rename contributes both the old and new path)
    - `groups[].message`: the full commit message with `\n` for newlines
-   - `groups[].diffHash`: staleness fingerprint — compute with `sh <skill dir>/scripts/group-commit.sh --hash <group files...>` and always set it. The runner recomputes it before committing and refuses the group (exit 3, kept in the plan) if the content changed since planning — this is what makes a stale plan unable to happy-commit
+   - `groups[].diffHash`: staleness fingerprint — do NOT compute it by hand; `--install` stamps it (step 9). The runner recomputes it before committing and refuses the group (exit 3, kept in the plan) if the content changed since planning — this is what makes a stale plan unable to happy-commit
    - `groups[].notes`: optional — deferred parts, contested files, caveats
    - `excluded`: uncommitted paths deliberately left out of every group, with the reason (personal files, local environment, generated state). Persisting them keeps re-invocations from re-proposing them.
 
-9. **Install the `git group-commit` command** — copy the runner shipped with this skill and wire the repo-local alias. Skip if already present and identical:
+9. **Install** — one command does every mechanical step, so nothing is retyped by hand:
 
    ```bash
-   cp <skill dir>/scripts/group-commit.sh "$GIT_DIR/group-commit.sh"
-   chmod +x "$GIT_DIR/group-commit.sh"
-   git config alias.group-commit '!sh "$(git rev-parse --git-dir)/group-commit.sh"'
+   sh <skill dir>/scripts/group-commit.sh --install "$PLAN"
    ```
+
+   It validates the plan (schema, every path exists on disk / in the index / in history, no
+   path in two groups — exit 2 otherwise), stamps each group's `diffHash`, writes
+   `$GIT_DIR/commits.json`, copies the runner, and sets the alias with literal quoting
+   (`$(git rev-parse --git-dir)` must stay unexpanded so it works from subdirectories and
+   worktrees), verifying it by readback. Its last stdout line echoes the canonical plan —
+   check it matches what you intended. Never hand-write the alias or `cp` the runner.
 
    The runner ([scripts/group-commit.sh](scripts/group-commit.sh)) is static and copied
    verbatim — never rewrite or inline it. It supports `git group-commit` (commit each group
    in sequence), `--dry-run`/`-n`/`--review` (print the full plan without committing),
    `--skip-groups=1,3` (commit only the others; skipped groups stay in `commits.json`),
-   `--force` (override the duplicate and staleness guards — a group whose subject line
-   already exists in the last 100 commits, or whose content no longer matches its
-   `diffHash`, is otherwise blocked with exit 3 and kept in the plan),
-   `--hash <files...>` (print the staleness fingerprint planners store as `diffHash`),
+   `--force` (override the duplicate, staleness, and partial-staging guards — a group whose
+   subject line already exists in the last 100 commits, or whose content no longer matches its
+   `diffHash`, is otherwise blocked with exit 3 and kept in the plan; a planned file with both
+   staged and unstaged hunks makes the whole run refuse with exit 2, since the runner stages
+   whole files). A group naming a path that exists nowhere (disk, index, history) is always
+   blocked (exit 3) — it is a typo, and committing without it would silently lose work. A
+   group whose changes are already committed (e.g. by hand) is dropped as done, never
+   reported as stale,
+   `--hash <files...>` (print the staleness fingerprint `--install` stores as `diffHash`),
+   `--install [plan]` (step 9),
    `--no-color` (ANSI colors are otherwise auto: TTY-only, `NO_COLOR` honored), and
    `--help`. Committed (or already-clean) groups are popped from `commits.json` on exit, so
    re-running is idempotent and only skipped/remaining groups survive; a fully-committed plan
@@ -175,6 +200,6 @@ and read the message from `<tmpfile>`. The script delegates to `codex exec` with
 
 **12 changed files across auth and UI:** Skill creates 2 groups: (1) "JWT auth middleware" (4 files), (2) "Dashboard redesign" (8 files). Outputs: "2 groups written to .git/. Review with `git group-commit --dry-run`, then run `git group-commit`."
 
-**Single bugfix (2 files):** Skill creates 1 group, skips the standalone-build check, writes `commits.json` with one entry, and prints the full commit message inline alongside the run instruction.
+**Single bugfix (2 files):** Fast path — no Workflow, no subagents. The session writes the message from the already-loaded diff, writes `commits.json` with one entry via shell, skips the standalone-build check, and prints the full commit message inline alongside the run instruction.
 
 **Re-invocation after a partial run:** Group 1 was committed, then a pre-commit hook rejected group 2. Skill detects group 1's files are clean, drops it, and regenerates `commits.json` with "Dashboard redesign" as the only remaining group.

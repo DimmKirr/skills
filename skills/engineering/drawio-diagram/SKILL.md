@@ -28,7 +28,7 @@ Copy style strings character-for-character from examples — the `mxgraph.aws4` 
 
 ## Approach
 
-**Work directly with the XML** — do NOT attempt Playwright/browser export. The drawio XML is a structured mxGraphModel that can be fully understood, analyzed, and edited as XML. Parse it, compute positions mathematically, identify violations, and write corrected XML.
+**Edit the XML directly.** Parse it, compute positions mathematically, identify violations, and write corrected XML. For PNG export and visual verification, use the bundled [scripts/export-png.mjs](scripts/export-png.mjs): it renders locally with Draw.io's viewer and an existing Chromium, without Electron. See [references/export.md](references/export.md) for setup, options, and limitations.
 
 **Analysis-first workflow**: Complete Phase 1 (position computation) and identify ALL violations across Phases 2-4 BEFORE making any changes. This prevents cascading surprises (e.g., nudging a node for label clearance on one edge may shrink the gap on an adjacent labeled edge).
 

@@ -1,0 +1,8 @@
+{
+  "name": "drawio-diagram-skill",
+  "private": true,
+  "type": "module",
+  "description": "Optional automation library for hosts without devcell's Patchright",
+  "engines": { "node": ">=20" },
+  "dependencies": { "playwright-core": "1.55.1" }
+}

@@ -1,9 +1,9 @@
 {
-  "skill_name": "pickup",
+  "skill_name": "load",
   "evals": [
     {
-      "id": "direct-pickup",
-      "prompt": "/pickup with a valid .scratch/CONTINUE.md",
+      "id": "direct-load",
+      "prompt": "/load with a valid .scratch/CONTINUE.md",
       "expected_output": "Loads the checkpoint, reconciles it with repository state, and offers the next concrete action",
       "assertions": [
         "reads only .scratch/CONTINUE.md as the active checkpoint",
@@ -15,8 +15,8 @@
       ]
     },
     {
-      "id": "confirmed-pickup",
-      "prompt": "Continue with step 1 after /pickup",
+      "id": "confirmed-load",
+      "prompt": "Continue with step 1 after /load",
       "expected_output": "Archives the consumed checkpoint and resumes work",
       "assertions": [
         "archives the checkpoint under .scratch/handoffs before beginning work",
@@ -27,7 +27,7 @@
     },
     {
       "id": "missing-checkpoint",
-      "prompt": "/pickup when .scratch/CONTINUE.md does not exist",
+      "prompt": "/load when .scratch/CONTINUE.md does not exist",
       "expected_output": "Reports that no active checkpoint exists and stops safely",
       "assertions": [
         "does not search for a root-level CONTINUE.md",
@@ -40,16 +40,16 @@
       "prompt": "Continue where we stopped yesterday",
       "expected_output": "Skill does not activate without explicit invocation",
       "assertions": [
-        "does not invoke pickup implicitly",
+        "does not invoke load implicitly",
         "does not read or move checkpoint files"
       ]
     },
     {
-      "id": "negative-file-pickup",
+      "id": "negative-file-load",
       "prompt": "Pick up the downloaded archive and extract it",
       "expected_output": "Skill does not activate for ordinary file operations",
       "assertions": [
-        "does not invoke pickup implicitly",
+        "does not invoke load implicitly",
         "recognizes that file handling is not session restoration"
       ]
     }

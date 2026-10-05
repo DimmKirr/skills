@@ -1,6 +1,6 @@
 interface:
-  display_name: "Pick Up Session"
+  display_name: "Load Session"
   short_description: "Resume work from the saved checkpoint"
-  default_prompt: "Use $pickup to restore the saved session checkpoint."
+  default_prompt: "Use $load to restore the saved session checkpoint."
 policy:
   allow_implicit_invocation: false

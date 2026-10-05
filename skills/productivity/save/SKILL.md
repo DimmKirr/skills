@@ -1,16 +1,16 @@
 ---
-name: wrapup
+name: save
 description: Save current session state to .scratch/CONTINUE.md and prepare for a safe user-controlled exit.
 disable-model-invocation: true
 ---
 
-# Wrap Up Session
+# Save Session
 
-Create one concise, decision-dense checkpoint that `/pickup` can resume later.
+Create one concise, decision-dense checkpoint that `/load` can resume later.
 
 <constraints>
 
-- Act only when the user explicitly invokes `/wrapup`.
+- Act only when the user explicitly invokes `/save`.
 - Use `.scratch/CONTINUE.md` as the only active checkpoint path. Never write a root-level `CONTINUE.md`.
 - Never terminate the host process or run `kill`. The user controls when the session exits.
 - Omit secrets, credentials, private keys, cookies, `.env` values, and raw logs. Record safe summaries instead.
@@ -71,7 +71,7 @@ Generated: <ISO 8601 timestamp>
 3. <Third action>
 
 ## Resume
-Invoke `/pickup` to reconcile this checkpoint with the workspace and continue.
+Invoke `/load` to reconcile this checkpoint with the workspace and continue.
 ```
 
 5. Verify that the file exists, contains no placeholders, and names a concrete first action.
@@ -79,5 +79,5 @@ Invoke `/pickup` to reconcile this checkpoint with the workspace and continue.
 
 ```text
 Checkpoint saved: .scratch/CONTINUE.md
-Use /exit to close this session. Invoke /pickup later to continue.
+Use /exit to close this session. Invoke /load later to continue.
 ```

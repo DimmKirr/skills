@@ -15,10 +15,12 @@
     {
       "id": "single-change",
       "prompt": "Generate a commit message for my staged changes",
-      "expected_output": "commits.json with exactly one entry; full message also printed inline",
+      "expected_output": "commits.json with exactly one entry via the fast path (no Workflow, no delegated message agent); full message also printed inline",
       "assertions": [
         "commits.json groups array has exactly one entry",
         "the standalone-build isolation check is skipped",
+        "the Workflow tool is not invoked and no subagent is spawned to write the message — the session writes it directly from the already-loaded diff",
+        "the runner and commits.json are installed with direct shell commands, not an agent",
         "the full commit message is printed inline in the summary",
         "message follows conventional commit format with imperative mood header"
       ]

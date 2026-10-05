@@ -16,7 +16,8 @@ Every generated message uses this exact format:
 
 - **First line** (header): ticket IDs in brackets, then a plain-English summary of the most impactful changes — written for a person reading the git log, not for a developer. Focus on API/behaviour/user-visible changes. Omit internal refactors from the header.
 - **Second line**: blank
-- **Bullet list**: every change is a `-` list item in conventional commit format (`feat/fix/refactor/test/docs/chore(scope): description`). No standalone subject line — the primary commit type goes first in the list. Each bullet ends with an em-dash and the impact (or `no user-facing impact` / `no impact`).
+- **Bullet list**: every change is a `-` list item in conventional commit format (`feat/fix/refactor/test/docs/chore(scope): description`). No standalone subject line — the primary commit type goes first in the list. Each bullet ends with an em-dash and the impact (or `no user-facing impact` for internal-only changes).
+- **Every claim must be backed by the diff.** Never invent an impact to fill the em-dash slot. If the diff cannot establish the consequence (dependency/lockfile bumps, vendored updates), name what changed instead — e.g. `chore(deps): bump claude-code.nix, home-manager, nixpkgs pins — picks up upstream changes` — and never assert `no functional impact` for them. Keep separate mechanisms separate: credit each effect to the change that actually causes it.
 - Scope should reflect the actual component: `worker`, `api`, `db`, `schemas`, `infra`, `tests`, `migrations`, `lib`
 - **Every bullet MUST have a scope** — `test:` alone is invalid, use `test(runner):` or `test(cfg):`. If tests span multiple areas, either split into separate bullets per area or use `test(all):`. Never omit the parenthesized scope.
 - Do NOT include speculative or future changes — only what is in the diff
@@ -24,7 +25,7 @@ Every generated message uses this exact format:
 - **Cap at ~7 bullets.** If you have 10+, group by purpose more aggressively (e.g., one bullet for "Add RBAC (middleware + admin panel + API + tests)", not four).
 - **Header names the highest-tier change** when multiple types are present. Priority: breaking > user-facing (feat/fix/perf) > internal (refactor/chore/test/docs). A commit with a breaking auth change and a UI refactor gets a header about the auth change.
 - **Breaking changes:** use `feat(api)!:` (! suffix) OR `feat(api): BREAKING: ...` (prefix) — not both.
-- If no Linear / Jira tickets are found, omit the `[ABC-xxx]` header and start directly with the conventional commit subject.
+- If no Linear / Jira tickets are found, omit the `[ABC-xxx]` prefix and start directly with the plain-English header (never a `type(scope):` prefix — types live on the bullets).
 - Ticket IDs in the header are plain text only: `[ABC-166, ABC-167]` — no markdown links, no parent ticket references.
 - Keep bullet descriptions concise (one line each); use the Linear / Jira ticket title to inform the language but don't copy-paste it verbatim.
 
@@ -58,7 +59,8 @@ Before finalizing each message, verify:
 
 - [ ] Message follows conventional commit format (type(scope): description)
 - [ ] Type matches the nature of changes (feat/fix/chore/refactor/docs)
-- [ ] Header is imperative mood
+- [ ] Header is plain English stating the outcome — imperative ("Add email validation to signup") or descriptive ("Signup now rejects malformed emails"); no `type(scope):` prefix
+- [ ] Every impact clause is supported by the diff (no invented or unprovable impact)
 - [ ] Every bullet has a parenthesized scope and an impact clause
 
 ## Examples

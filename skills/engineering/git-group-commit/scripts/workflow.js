@@ -5,7 +5,7 @@ export const meta = {
   phases: [
     { title: 'Plan', detail: 'cluster the diff into groups, verify standalone builds, fetch tickets', model: 'sonnet' },
     { title: 'Messages', detail: 'one agent per group, scoped diff, format.md rules', model: 'sonnet' },
-    { title: 'Assemble', detail: 'write commits.json, install runner + alias', model: 'haiku' },
+    { title: 'Assemble', detail: 'group-commit.sh --install: validate plan, stamp diffHash, install runner + alias', model: 'haiku' },
   ],
 }
 
@@ -93,12 +93,14 @@ const plan = await agent(
 1. Gather state: git status, git diff HEAD, git log --oneline -20, git branch --show-current.
 2. If $(git rev-parse --git-dir)/commits.json exists, prune groups whose files are all clean; keep its excluded list.
 3. Cluster remaining uncommitted changes into independently-committable feature groups (one group is a normal outcome). Order by dependency. Exclude personal/local-environment paths into "excluded" with reasons. Every dirty path must land in exactly one group or in excluded — cross-check your file lists against git status before returning. A rename/move contributes TWO entries to its group: the old (deleted) path AND the new path; omitting the deletion leaves the old file in the commit.
-4. If more than one group: verify each group's staged tree builds standalone (cumulative git add, git write-tree + git archive to a temp dir, project's build/validate command; reset index afterwards). Move files between groups until each passes.
+4. If more than one group: verify each group's tree builds standalone. NEVER touch the real index (no git add / git reset on it — the user's staging must survive). Use a throwaway index inside ONE shell invocation (env does not persist between calls): export GIT_INDEX_FILE=$(mktemp -u); git read-tree HEAD; then per group, cumulatively: git add -- <group files>; S=$(mktemp -d); git archive "$(git write-tree)" | tar -x -C "$S"; run the project's build/validate command in "$S". Finally rm -f "$GIT_INDEX_FILE". Compare failures against plain HEAD before blaming a group. Move files between groups until each passes.
 5. Extract ticket IDs from branch/commits/diff; fetch each from Linear/Jira MCP (use ToolSearch to load the tools) — return an empty tickets array if none.
 Return the plan as structured output. Do NOT write commits.json and do NOT commit.`,
   { schema: PLAN_SCHEMA, model: 'sonnet', label: 'plan', phase: 'Plan' },
 )
-if (!plan || plan.groups.length === 0) return { committedPlan: false, reason: 'no uncommitted changes to group' }
+// A missing plan is an agent failure, not an empty tree — never report it as "nothing to do".
+if (!plan) throw new Error('plan agent returned nothing — re-run to retry (cached stages replay)')
+if (plan.groups.length === 0) return { committedPlan: false, reason: 'no uncommitted changes to group' }
 log(`${plan.groups.length} group(s) planned, ${plan.excluded.length} path(s) excluded`)
 
 phase('Messages')
@@ -129,8 +131,30 @@ MANDATORY structure (read ${skillDir}/references/format.md${dirNote} for the ful
 (types: feat|fix|refactor|test|docs|chore|perf|ci|build; scope mandatory; max 7 bullets; omit [TICKET-IDs] when this group has none)
 NEVER add/insert Co-Authored-By or any other trailer line — the message ends with the last bullet. Each bullet is ONE short line (~15 words) — name the change, then the consequence; no run-on clauses. Cover every major NEW capability in the diff (new commands, scripts, integrations), not just moves/renames.`
 
-// Structural retry (regex-checked), then semantic verify against format.md's
-// user-impact quality rules, with one corrective retry on violations.
+const diffCmd = (g) =>
+  `git diff HEAD -- ${g.files.map((f) => JSON.stringify(f)).join(' ')} (use git diff --no-index /dev/null <file> for untracked files)`
+
+// Semantic review is evidence-based: the reviewer reads the group's diff itself.
+// A reviewer that only sees the message can push toward plausible-sounding but
+// unsupported claims (e.g. "no functional impact" on a lockfile bump).
+const review = (g, message) =>
+  agent(
+    `Review this commit message for ONE group. First read the group's diff: ${diffCmd(g)}.
+Flag, in priority order:
+1. FACTUAL: any claim the diff does not support — wrong mechanism, conflated mechanisms (e.g. crediting one change with another's effect), invented or unverifiable impact (e.g. "no functional impact" on a dependency/lockfile bump the diff cannot prove harmless), changes attributed that are not in the diff.
+2. MISSING: major new capabilities in the diff the message omits.
+3. QUALITY per the "User-impact quality check" in ${skillDir}/references/format.md${dirNote}: header answers "what changed for the user", impact clauses state consequences not mechanisms, bullets under ~20 words, header not polluted by unrelated changes.
+Every violation must quote the offending text and say what the diff actually shows. Do NOT check formatting. Do NOT demand an impact the diff cannot establish — for such changes the honest form names what changed (e.g. which inputs were bumped).
+Message:
+${message}
+Group description: ${g.description}`,
+    { schema: VERDICT_SCHEMA, model: 'sonnet', effort: 'low', label: `verify:${g.name}`, phase: 'Messages' },
+  )
+
+const MAX_ATTEMPTS = 3
+// Structural check (regex) on every draft; semantic review on every draft that
+// passes it (rewrites included — a rewrite can introduce new errors). Rewrites
+// see the rejected draft and must change only what the violations name.
 const genMessage = async (g, ix) => {
   const opts = (label) => ({
     schema: MESSAGE_SCHEMA,
@@ -139,29 +163,34 @@ const genMessage = async (g, ix) => {
     label,
     phase: 'Messages',
   })
-  let res = await agent(msgPrompt(g, ix), opts(`msg:${g.name}`))
-  let errs = res ? validateMessage(res.message) : ['agent returned nothing']
-  if (errs.length === 0) {
-    const verdict = await agent(
-      `Strictly review this commit message against the "User-impact quality check" in ${skillDir}/references/format.md${dirNote}: header answers "what changed for the user", impact clauses state consequences (not mechanisms, not restatements), internal bullets stay brief, header not polluted by unrelated changes. Also flag: bullets over ~20 words, and major new capabilities in the file list that the message omits. Do NOT check formatting — only content quality.
-Message:
-${res.message}
-Group description: ${g.description}`,
-      { schema: VERDICT_SCHEMA, model: 'sonnet', effort: 'low', label: `verify:${g.name}`, phase: 'Messages' },
-    )
-    if (verdict && !verdict.ok) errs = verdict.violations
-  }
-  if (errs.length) {
-    res = await agent(
-      `${msgPrompt(g, ix)}
+  // Semantic review pays off when messages compete for scope (2+ groups) or the
+  // group is large; a lone small group keeps just the structural check.
+  const wantVerify = plan.groups.length > 1 || g.files.length > 10
+  let prompt = msgPrompt(g, ix)
+  let last = null
+  let lastErrs = []
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    const res = await agent(prompt, opts(attempt === 1 ? `msg:${g.name}` : `msg-retry${attempt - 1}:${g.name}`))
+    let errs = res ? validateMessage(res.message) : ['agent returned nothing']
+    const structuralOk = errs.length === 0
+    if (structuralOk && wantVerify) {
+      const verdict = await review(g, res.message)
+      if (verdict && !verdict.ok) errs = verdict.violations
+    }
+    if (structuralOk) { last = res; lastErrs = errs }
+    if (errs.length === 0) return res
+    prompt = `${msgPrompt(g, ix)}
 
-A previous attempt was rejected for: ${errs.join('; ')}. Produce a fully compliant message.`,
-      opts(`msg-retry:${g.name}`),
-    )
-    const finalErrs = res ? validateMessage(res.message) : ['agent returned nothing']
-    if (finalErrs.length) throw new Error(`group ${ix + 1} message still non-compliant: ${finalErrs.join('; ')}`)
+A previous draft was rejected.
+Rejected draft:
+${res ? res.message : '(none)'}
+Violations: ${errs.join('; ')}
+Fix ONLY what the violations name. Keep every statement they do not dispute. Re-read the diff before asserting any impact; never add a claim the diff does not show.`
   }
-  return res
+  if (!last) throw new Error(`group ${ix + 1} message still non-compliant after ${MAX_ATTEMPTS} attempts: ${lastErrs.join('; ')}`)
+  // Structurally valid but review still objects: keep it, surface the objections
+  // in the plan so `git group-commit --dry-run` shows them before anything commits.
+  return { ...last, unresolved: lastErrs }
 }
 const messages = await parallel(plan.groups.map((g, ix) => () => genMessage(g, ix)))
 if (messages.some((m) => !m)) throw new Error('a message agent failed — re-run to use cached results')
@@ -170,7 +199,9 @@ const commitsJson = {
   groups: plan.groups.map((g, ix) => ({
     name: g.name,
     description: g.description,
-    ...(g.notes ? { notes: g.notes } : {}),
+    ...(g.notes || messages[ix].unresolved
+      ? { notes: [g.notes, messages[ix].unresolved && `REVIEW OBJECTIONS (unresolved, check the message): ${messages[ix].unresolved.join('; ')}`].filter(Boolean).join(' | ') }
+      : {}),
     files: g.files,
     message: messages[ix].message,
   })),
@@ -178,20 +209,67 @@ const commitsJson = {
 }
 
 phase('Assemble')
-await agent(
-  `Install the git-group-commit artifacts (mechanical, no judgment). Skill folder: ${skillDir}${dirNote}.
-1. GIT_DIR=$(git rev-parse --git-dir)
-2. For EACH group below, compute its staleness fingerprint: sh ${skillDir}/scripts/group-commit.sh --hash <that group's files...> — then write the JSON to $GIT_DIR/commits.json exactly as given EXCEPT each group gains a "diffHash" field with its computed fingerprint:
-${JSON.stringify(commitsJson, null, 2)}
-3. cp <skill folder>/scripts/group-commit.sh "$GIT_DIR/group-commit.sh" && chmod +x "$GIT_DIR/group-commit.sh"
-4. git config alias.group-commit '!sh "$(git rev-parse --git-dir)/group-commit.sh"'
-5. Verify: git group-commit --dry-run --no-color exits 0. Do NOT commit anything.`,
-  { model: 'haiku', effort: 'low', label: 'assemble', phase: 'Assemble' },
-)
+// The agent only transports bytes: the plan goes through a QUOTED heredoc (no
+// expansion) and group-commit.sh --install does every mechanical step itself —
+// schema/path validation, diffHash stamping, runner copy, alias with literal
+// quoting. The echoed canonical plan is then checked here, in code.
+const INSTALL_SCHEMA = {
+  type: 'object',
+  required: ['exitCode', 'stdout'],
+  properties: {
+    exitCode: { type: 'number' },
+    stdout: { type: 'string', description: 'complete stdout of the command, verbatim' },
+    stderr: { type: 'string' },
+  },
+}
+const planJson = JSON.stringify(commitsJson, null, 2)
+const installPrompt = (feedback) => `Run the following as ONE shell invocation, copying it byte-for-byte. The heredoc delimiter is quoted, so nothing inside it is expanded — do not escape, reformat, or retype any part of it. Do not run anything else and do NOT commit.
+${feedback ? `\nA previous attempt failed verification: ${feedback}\n` : ''}
+PLAN=$(mktemp)
+cat > "$PLAN" <<'GGC_PLAN_EOF'
+${planJson}
+GGC_PLAN_EOF
+sh ${skillDir}/scripts/group-commit.sh --install "$PLAN"; echo "exit=$?"
+
+Return the exit code and the complete stdout verbatim (and stderr if any).`
+
+const norm = (x) => String(x ?? '').trim()
+function verifyInstall(out) {
+  if (!out) return 'agent returned nothing'
+  if (out.exitCode !== 0) return `--install exited ${out.exitCode}: ${norm(out.stderr) || norm(out.stdout)}`
+  const line = norm(out.stdout).split('\n').reverse().find((l) => l.trim().startsWith('{'))
+  if (!line) return 'no canonical plan echoed on stdout'
+  let got
+  try { got = JSON.parse(line) } catch (e) { return `echoed plan is not JSON: ${e.message}` }
+  if (!got.groups || got.groups.length !== commitsJson.groups.length) return 'group count differs from the plan'
+  for (const [ix, want] of commitsJson.groups.entries()) {
+    const have = got.groups[ix]
+    if (norm(have.name) !== norm(want.name)) return `group ${ix + 1} name differs`
+    if (JSON.stringify(have.files) !== JSON.stringify(want.files)) return `group ${ix + 1} files differ`
+    if (norm(have.message) !== norm(want.message)) return `group ${ix + 1} message differs`
+    if (!/^[0-9a-f]{40,64}$/.test(norm(have.diffHash))) return `group ${ix + 1} has no diffHash`
+  }
+  return null
+}
+
+let installErr = null
+for (let attempt = 1; attempt <= 2; attempt++) {
+  const out = await agent(installPrompt(installErr), {
+    schema: INSTALL_SCHEMA, model: 'haiku', effort: 'low', label: attempt === 1 ? 'assemble' : 'assemble-retry', phase: 'Assemble',
+  })
+  installErr = verifyInstall(out)
+  if (!installErr) break
+}
+if (installErr) {
+  return { committedPlan: false, reason: `install failed verification: ${installErr} — inspect $(git rev-parse --git-dir)/commits.json before running git group-commit` }
+}
 
 return {
   committedPlan: true,
-  groups: commitsJson.groups.map((g, ix) => ({ n: ix + 1, name: g.name, files: g.files.length, header: g.message.split('\n')[0] })),
+  groups: commitsJson.groups.map((g, ix) => ({
+    n: ix + 1, name: g.name, files: g.files.length, header: g.message.split('\n')[0],
+    ...(messages[ix].unresolved ? { reviewObjections: messages[ix].unresolved } : {}),
+  })),
   excluded: plan.excluded,
   next: 'Review with `git group-commit --dry-run`, then run `git group-commit`.',
 }

@@ -22,6 +22,12 @@ Keep entries specific and actionable. Prefer "source X exports dates as MM/DD/YY
 
 ## Learnings
 
+### [2026-09-25] SQLite migrations must preserve schema objects outside the target table
+
+**Context**: Koinstable payment-workflow migration rehearsed on a read-only online backup of the existing database.
+**Finding**: GORM AutoMigrate rebuilt an unrelated table and dropped manually created indexes even though every existing field survived. Transaction-only and synthetic row checks missed this.
+**Rule**: Compare all original tables, fields, indexes/triggers, and autoincrement high-water marks on a disposable real-backup copy. Run migration twice, verify integrity/foreign keys, and rehearse rollback with closed connections. Preserve the original backup and compare hashes; report field digests/locations, never private raw values.
+
 <!-- Append new entries below this line -->
 
 ### Entity name mismatches across multi-provider data sources

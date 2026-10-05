@@ -48,13 +48,13 @@ After writing the corrected XML, re-read it and verify by recomputing positions:
 
 All spacing, alignment, style, and layout checks MUST be verified visually via PNG export and LLM review. Mathematical position analysis alone is insufficient — it misses rendering artifacts, label overflow, font sizing issues, and visual weight imbalances that only appear in the rendered output.
 
-1. Export PNG: `drawio --no-sandbox -x -f png --scale 3 -o /tmp/diagram-verify.png input.drawio`
-   - `--no-sandbox` required in containers (no SUID sandbox)
-   - Do NOT use `--disable-gpu` — it breaks Electron argument parsing
-   - `--scale 3` is the sweet spot for LLM vision review (~5000-6000px). Higher scales (4x+) waste tokens — Claude downsamples to ~1568px internally, so anything above 3x gives no extra detail to the model. Lower scales (1x-1.5x) make small text unreadable.
-   - **Requires**: a GUI-enabled environment (e.g. a headless container running Xvfb + mesa software rendering)
-   - If export fails with "Export failed", reduce scale to 2.5 or check: (1) `/dev/shm` size (`df -h /dev/shm` — needs 1GB), (2) env vars `DISPLAY`, `LIBGL_ALWAYS_SOFTWARE`
-   - dbus warnings in stderr are harmless — check for `->` in output to confirm success
+1. Export PNG using this skill's `scripts/export-png.mjs`:
+   `node scripts/export-png.mjs --no-sandbox --scale 3 input.drawio /tmp/diagram-verify.png`
+   - Resolve the script path from the skill directory, not the project directory.
+   - Reuses the existing Chromium and Patchright in devcell. No Electron or GUI server is needed.
+   - Omit `--no-sandbox` on hosts where Chromium's sandbox works. Add `--offline` after preparing the cached assets.
+   - Keep the default full-page canvas for page-balance review; use `--crop` only for a separate detail view.
+   - See [export.md](export.md) for first-use setup, multi-page selection, and unsupported features. Use desktop Draw.io in `bbb` for MathJax, external assets or other export formats.
 2. View the PNG using the `Read` tool (which renders images for LLM vision review). The export is full-page (not cropped) — view it as a person would view the printed/shared diagram
 3. **Page-level balance** (assess first, before zooming into details):
    - Is the diagram well-centered on the page? Or crammed into one corner with empty space elsewhere?
